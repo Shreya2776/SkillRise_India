@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import passport from "passport";
+import resumeRoutes from "./routes/resume.routes";
 
 import { connectDB } from "./config/db";
 import "./config/passport";
@@ -29,6 +30,7 @@ app.use(
 app.use(passport.initialize());
 
 app.use("/auth", authRoutes);
+app.use("/api/resume", resumeRoutes);
 
 app.listen(8000, () => {
   console.log("Server running on port 8000");
