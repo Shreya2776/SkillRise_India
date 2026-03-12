@@ -1,3 +1,4 @@
+// src/utils/textChunker.ts
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 export const chunkResumeText = async (text: string) => {
 

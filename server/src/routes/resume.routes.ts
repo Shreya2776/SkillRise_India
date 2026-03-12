@@ -1,9 +1,12 @@
 import express from "express";
-import { uploadResume } from "../controllers/resume.controller";
-import upload from "../middleware/upload.middleware";
+import { analyzeResume } from "../controllers/resume.controller";
+import { upload } from "../middleware/upload.middleware";
 
 const router = express.Router();
 
-router.post("/upload-resume", upload.single("resume"), uploadResume);
+/*
+POST /api/resume/analyze
+*/
+router.post("/analyze", upload.single("resume"), analyzeResume);
 
 export default router;

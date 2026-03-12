@@ -1,24 +1,4 @@
-// import mongoose from "mongoose";
-
-// export type Role = "USER" | "RECRUITER" | "ADMIN";
-
-// const UserSchema = new mongoose.Schema(
-//   {
-//     name: String,
-//     email: { type: String, unique: true },
-//     password: String,
-//     role: {
-//       type: String,
-//       enum: ["USER", "RECRUITER", "ADMIN"],
-//       default: "USER",
-//     },
-//     googleId: String,
-//   },
-//   { timestamps: true }
-// );
-
-// export default mongoose.model("User", UserSchema);
-
+// src/models/User.ts
 import mongoose, { Document } from "mongoose";
 
 export type Role = "USER" | "RECRUITER" | "ADMIN";
