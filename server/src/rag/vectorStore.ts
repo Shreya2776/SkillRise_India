@@ -1,4 +1,4 @@
-import { MemoryVectorStore } from "@langchain/community/vectorstores";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { embeddings } from "./embeddings";
 import { Document } from "@langchain/core/documents";
 
