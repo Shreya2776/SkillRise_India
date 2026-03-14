@@ -6,17 +6,20 @@ import { generateSuggestions } from "../services/suggestionGenerator.js";
 export async function analyzeResume(req,res){
 
  try{
-
+ console.log("File received:", req.file);
  const text = await parseResume(req.file);
-
+ console.log("Extracted text length:", text.length);
  const skills = await extractSkills(text);
-
- const score = calculateATS(skills,req.body.jobSkills,0.8);
-
- const suggestions = await generateSuggestions(text,req.body.jobDescription);
+ console.log("Skills:", skills);
  
-  const jobSkills = req.body?.jobSkills || [];
-  const jobDescription = req.body?.jobDescription || "";
+ const jobSkills = req.body?.jobSkills || [];
+ const jobDescription = req.body?.jobDescription || "";
+
+ const score = calculateATS(skills, jobSkills, 0.8);
+
+ const suggestions = await generateSuggestions(text, jobDescription);
+ 
+  
 
  res.json({
   skills,
