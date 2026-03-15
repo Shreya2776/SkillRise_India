@@ -13,6 +13,7 @@ import JobsAndInternships from "./pages/JobsAndInternships.jsx";
 import GovernmentSchemes from "./pages/GovernmentSchemes.jsx";
 import SkillProgress from "./pages/SkillProgress.jsx";
 import Feedback from "./pages/Feedback.jsx";
+import InterviewPage from "./pages/InterviewPage.jsx";
 import Navbar from "./components/Navbar.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
 import ProtectedRoute from "./components/common/ProtectedRoute.jsx";
@@ -42,6 +43,7 @@ function App() {
             <Route path="/schemes" element={<GovernmentSchemes />} />
             <Route path="/progress" element={<SkillProgress />} />
             <Route path="/feedback" element={<Feedback />} />
+            <Route path="/mock-interview" element={<InterviewPage />} />
           </Route>
         </Route>
 
