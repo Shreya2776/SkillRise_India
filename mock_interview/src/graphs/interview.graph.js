@@ -1,29 +1,68 @@
 // src/graphs/interview.graph.js
-import { StateGraph, START, END } from "@langchain/langgraph";
+import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { v4 as uuidv4 } from "uuid";
 import { getNextQuestion, getFollowUpQuestion } from "../services/question.service.js";
 import { processAnswer } from "../services/evaluation.service.js";
 import { generateFinalReport } from "../services/llm.service.js";
-import { InterviewSession } from "../models/interviewSession.model.js";
+import { saveSessionToDb, loadSessionFromDb } from "../services/session.service.js";
 
-// ── In-memory store ──
+// ─────────────────────────────────────────────────────────────────────────────
+// State Schema (LangGraph Annotation API — replaces raw `channels` object)
+// ─────────────────────────────────────────────────────────────────────────────
+const InterviewStateAnnotation = Annotation.Root({
+  id:              Annotation({ reducer: (_, v) => v, default: () => null }),
+  role:            Annotation({ reducer: (_, v) => v, default: () => null }),
+  level:           Annotation({ reducer: (_, v) => v, default: () => null }),
+  skills:          Annotation({ reducer: (_, v) => v, default: () => [] }),
+  testedSkills:    Annotation({ reducer: (_, v) => v, default: () => [] }),
+  currentSkill:    Annotation({ reducer: (_, v) => v, default: () => null }),
+  categoryIndex:   Annotation({ reducer: (_, v) => v, default: () => 0 }),
+  maxQuestions:    Annotation({ reducer: (_, v) => v, default: () => 5 }),
+  followUpUsed:    Annotation({ reducer: (_, v) => v, default: () => false }),
+  difficulty:      Annotation({ reducer: (_, v) => v, default: () => "medium" }),
+  state:           Annotation({ reducer: (_, v) => v, default: () => "init" }),
+  currentQuestion: Annotation({ reducer: (_, v) => v, default: () => null }),
+  questionNumber:  Annotation({ reducer: (_, v) => v, default: () => 1 }),
+  history:         Annotation({ reducer: (_, v) => v, default: () => [] }),
+  pendingAnswer:   Annotation({ reducer: (_, v) => v, default: () => null }),
+  report:          Annotation({ reducer: (_, v) => v, default: () => null }),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In-memory session store (primary fast path; DB is the fallback/persistence)
+// ─────────────────────────────────────────────────────────────────────────────
 const sessions = new Map();
 
 export function getSession(id) {
   return sessions.get(id) ?? null;
 }
 
-/**
- * Node: Generate Question
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Adaptive difficulty helper
+// ─────────────────────────────────────────────────────────────────────────────
+function resolveNextDifficulty(score, current) {
+  if (score >= 8) return "hard";
+  if (score < 5)  return "easy";
+  // Score 5-7: stay at current to avoid thrashing
+  return current;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Node: Generate Question
+// ─────────────────────────────────────────────────────────────────────────────
 async function nodeGenerateQuestion(state) {
   const previousQuestions = state.history.map((h) => h.question);
-  
-  // Skill Rotation
-  const availableSkills = state.skills.filter(s => !state.testedSkills.includes(s));
-  const targetSkill = availableSkills.length > 0 ? availableSkills[0] : state.skills[Math.floor(Math.random() * state.skills.length)];
 
-  // Category Rotation
+  // Skill rotation: prefer untested skills; cycle back when all tested
+  const availableSkills = state.skills.filter(
+    (s) => !state.testedSkills.includes(s)
+  );
+  const targetSkill =
+    availableSkills.length > 0
+      ? availableSkills[0]
+      : state.skills[state.questionNumber % state.skills.length];
+
+  // Category rotation
   const categories = ["Concept", "Implementation", "Debugging", "Optimization"];
   const currentCategory = categories[state.categoryIndex % categories.length];
 
@@ -32,7 +71,7 @@ async function nodeGenerateQuestion(state) {
     level: state.level,
     skills: [targetSkill],
     category: currentCategory,
-    difficulty: state.difficulty || "medium",
+    difficulty: state.difficulty,
     questionNumber: state.questionNumber,
     previousQuestions,
   });
@@ -42,222 +81,227 @@ async function nodeGenerateQuestion(state) {
     currentQuestion: question,
     currentSkill: targetSkill,
     categoryIndex: state.categoryIndex + 1,
-    followUpUsed: false, // Reset follow-up flag for new topic
+    followUpUsed: false,
     state: "questioning",
   };
 }
 
-/**
- * Node: Evaluate Answer & Decide Next Step
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Node: Evaluate Answer
+// ─────────────────────────────────────────────────────────────────────────────
 async function nodeEvaluateAnswer(state) {
   if (!state.pendingAnswer) return state;
 
   const evaluation = await processAnswer({
-    role: state.role,
-    level: state.level,
+    role:     state.role,
+    level:    state.level,
     question: state.currentQuestion,
-    answer: state.pendingAnswer,
+    answer:   state.pendingAnswer,
   });
 
   const newEntry = {
-    skill: state.currentSkill,
-    question: state.currentQuestion,
-    answer: state.pendingAnswer,
+    skill:      state.currentSkill,
+    question:   state.currentQuestion,
+    answer:     state.pendingAnswer,
     evaluation,
+    timestamp:  new Date().toISOString(),
   };
 
   const updatedHistory = [...state.history, newEntry];
   const isDone = updatedHistory.length >= (state.maxQuestions || 5);
 
-  let nextQuestion = null;
-  let nextState = isDone ? "reporting" : "questioning";
-  let followUpUsedForThisTurn = state.followUpUsed || false;
+  const score = evaluation.score?.overall ?? 0;
+  const nextDifficulty = resolveNextDifficulty(score, state.difficulty);
 
-  // Adaptive Difficulty Logic
-  const score = evaluation.score?.overall || 0;
-  let nextDifficulty = "medium";
-  if (score >= 8) nextDifficulty = "hard";
-  else if (score < 5) nextDifficulty = "easy";
-  
-  // Follow-up Logic: Trigger only if NO follow-up was asked for this topic yet
-  const shouldFollowUp = (score < 6 || evaluation.isFollowUpNeeded) && !isDone && !followUpUsedForThisTurn;
-  
+  // Follow-up logic:
+  // - Only if score < 6 OR LLM flagged it
+  // - Never if we already used a follow-up for this topic
+  // - Never if the interview is done
+  const shouldFollowUp =
+    (score < 6 || evaluation.isFollowUpNeeded) &&
+    !isDone &&
+    !state.followUpUsed;
+
+  let nextQuestion = null;
+  let followUpUsed = state.followUpUsed;
   let updatedTestedSkills = [...state.testedSkills];
-  
+
   if (shouldFollowUp) {
     nextQuestion = await getFollowUpQuestion({
-        role: state.role,
-        level: state.level,
-        question: state.currentQuestion,
-        answer: state.pendingAnswer,
-        feedback: evaluation.feedback
+      role:     state.role,
+      level:    state.level,
+      question: state.currentQuestion,
+      answer:   state.pendingAnswer,
+      feedback: evaluation.feedback,
     });
-    followUpUsedForThisTurn = true; // Mark follow-up as used
+    followUpUsed = true;
   } else {
-    // If no follow-up requested OR follow-up already used, close the topic
+    // Close the topic — mark skill as tested
     if (state.currentSkill && !updatedTestedSkills.includes(state.currentSkill)) {
       updatedTestedSkills.push(state.currentSkill);
     }
-    followUpUsedForThisTurn = false; // Topic closed
+    followUpUsed = false;
   }
 
   return {
     ...state,
-    history: updatedHistory,
-    questionNumber: state.questionNumber + 1,
-    pendingAnswer: null,
+    history:         updatedHistory,
+    questionNumber:  state.questionNumber + 1,
+    pendingAnswer:   null,
     currentQuestion: nextQuestion,
-    difficulty: nextDifficulty,
-    testedSkills: updatedTestedSkills,
-    followUpUsed: followUpUsedForThisTurn,
-    state: nextState,
+    difficulty:      nextDifficulty,
+    testedSkills:    updatedTestedSkills,
+    followUpUsed,
+    state: isDone ? "reporting" : "questioning",
   };
 }
 
-/**
- * Node: Generate Final Report
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Node: Generate Final Report
+// ─────────────────────────────────────────────────────────────────────────────
 async function nodeGenerateReport(state) {
   const report = await generateFinalReport({
-    role: state.role,
-    level: state.level,
+    role:    state.role,
+    level:   state.level,
     history: state.history,
   });
 
-  return {
-    ...state,
-    report,
-    state: "done",
-  };
+  // Persist final session to DB (fire-and-forget; don't block response)
+  saveSessionToDb({ ...state, report, state: "done" }).catch((err) =>
+    console.error("[Graph] DB persist error:", err.message)
+  );
+
+  return { ...state, report, state: "done" };
 }
 
-// ── Build LangGraph ──
+// ─────────────────────────────────────────────────────────────────────────────
+// Build LangGraph
+// ─────────────────────────────────────────────────────────────────────────────
 function buildInterruptibleGraph() {
-  const graph = new StateGraph({
-    channels: {
-      id: null,
-      role: null,
-      level: null,
-      skills: null,
-      testedSkills: null,
-      currentSkill: null,
-      categoryIndex: null,
-      maxQuestions: null,
-      followUpUsed: null,
-      difficulty: null,
-      state: null,
-      currentQuestion: null,
-      questionNumber: null,
-      history: null,
-      pendingAnswer: null,
-      report: null
-    }
-  });
+  const graph = new StateGraph(InterviewStateAnnotation);
 
   graph.addNode("generate_question", nodeGenerateQuestion);
-  graph.addNode("evaluate_answer", nodeEvaluateAnswer);
-  graph.addNode("generate_report", nodeGenerateReport);
+  graph.addNode("evaluate_answer",   nodeEvaluateAnswer);
+  graph.addNode("generate_report",   nodeGenerateReport);
 
+  // Entry: if we have a pending answer, evaluate; otherwise generate a question
   graph.addConditionalEdges(START, (state) => {
     if (state.pendingAnswer) return "evaluate_answer";
     return "generate_question";
   });
 
+  // After evaluation: done → report; follow-up ready → END (question already set);
+  // otherwise → generate next question
   graph.addConditionalEdges("evaluate_answer", (state) => {
     if (state.state === "reporting") return "generate_report";
-    if (state.currentQuestion) return END; // Follow-up already generated in evaluate_answer node
+    if (state.currentQuestion)       return END; // follow-up pre-generated
     return "generate_question";
   });
 
   graph.addEdge("generate_question", END);
-  graph.addEdge("generate_report", END);
+  graph.addEdge("generate_report",   END);
 
   return graph.compile();
 }
 
 const interviewGraph = buildInterruptibleGraph();
 
-// ── Public API ──
+// ─────────────────────────────────────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────────────────────────────────────
 
-export async function startInterview({ role, level, skills, maxQuestions }) {
+/**
+ * Start a new interview session.
+ * Accepts an optional `initialDifficulty` from the pre-assessment engine.
+ */
+export async function startInterview({
+  role,
+  level,
+  skills,
+  maxQuestions,
+  initialDifficulty = "medium",
+}) {
   const sessionId = uuidv4();
   const initialState = {
-    id: sessionId,
+    id:              sessionId,
     role,
     level,
     skills,
-    maxQuestions: maxQuestions || 5,
-    testedSkills: [],
-    currentSkill: null,
-    categoryIndex: 0,
-    followUpUsed: false,
-    difficulty: "medium", // Default starting difficulty
-    state: "init",
+    maxQuestions:    maxQuestions || 5,
+    testedSkills:    [],
+    currentSkill:    null,
+    categoryIndex:   0,
+    followUpUsed:    false,
+    difficulty:      initialDifficulty,
+    state:           "init",
     currentQuestion: null,
-    questionNumber: 1,
-    history: [],
-    pendingAnswer: null,
-    report: null,
+    questionNumber:  1,
+    history:         [],
+    pendingAnswer:   null,
+    report:          null,
   };
 
   const result = await interviewGraph.invoke(initialState);
   sessions.set(result.id, result);
 
   return {
-    sessionId: result.id,
-    question: result.currentQuestion,
+    sessionId:      result.id,
+    question:       result.currentQuestion,
     questionNumber: result.questionNumber,
-    skill: result.currentSkill,
-    maxQuestions: result.maxQuestions
+    skill:          result.currentSkill,
+    difficulty:     result.difficulty,
+    maxQuestions:   result.maxQuestions,
   };
 }
 
+/**
+ * Submit an answer and advance the graph.
+ */
 export async function submitAnswer({ sessionId, answer }) {
-  const session = sessions.get(sessionId);
-  if (!session) throw new Error("Session not found");
+  // Try memory first, fall back to DB (e.g., after server restart)
+  let session = sessions.get(sessionId);
+  if (!session) {
+    session = await loadSessionFromDb(sessionId);
+    if (!session) throw new Error("Session not found");
+    sessions.set(sessionId, session);
+  }
+
   if (session.state === "done") throw new Error("Interview already completed");
 
-  const inputState = {
-    ...session,
-    pendingAnswer: answer,
-  };
-
+  const inputState = { ...session, pendingAnswer: answer };
   const result = await interviewGraph.invoke(inputState);
   sessions.set(sessionId, result);
 
   const lastEvaluation = result.history.at(-1).evaluation;
 
+  const base = {
+    score:                 lastEvaluation.score,
+    feedback:              lastEvaluation.feedback,
+    betterAnswer:          lastEvaluation.improvedAnswer,
+    conversationalResponse: lastEvaluation.conversationalResponse,
+  };
+
   if (result.state === "done") {
-    return {
-      score: lastEvaluation.score,
-      feedback: lastEvaluation.feedback,
-      betterAnswer: lastEvaluation.improvedAnswer,
-      conversationalResponse: lastEvaluation.conversationalResponse,
-      nextQuestion: null,
-      isComplete: true
-    };
+    return { ...base, nextQuestion: null, isComplete: true, report: result.report };
   }
 
   return {
-    score: lastEvaluation.score,
-    feedback: lastEvaluation.feedback,
-    betterAnswer: lastEvaluation.improvedAnswer,
-    conversationalResponse: lastEvaluation.conversationalResponse,
-    nextQuestion: result.currentQuestion,
+    ...base,
+    nextQuestion:   result.currentQuestion,
     questionNumber: result.questionNumber,
-    skill: result.currentSkill,
-    isComplete: false,
+    skill:          result.currentSkill,
+    difficulty:     result.difficulty,
+    isComplete:     false,
   };
 }
 
+/**
+ * Force-generate a report for an in-progress or completed session.
+ */
 export async function getReport({ sessionId }) {
-  const session = sessions.get(sessionId);
+  const session = sessions.get(sessionId) || (await loadSessionFromDb(sessionId));
   if (!session) throw new Error("Session not found");
-
-  if (session.state === "done") {
-    return session.report;
-  }
+  if (session.state === "done") return session.report;
 
   const result = await nodeGenerateReport(session);
   sessions.set(sessionId, result);

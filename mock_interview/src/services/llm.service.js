@@ -1,5 +1,14 @@
 // src/services/llm.service.js
+/**
+ * LLM Abstraction Layer
+ * ─────────────────────
+ * Single entry point for all LLM calls. Swap providers via LLM_PROVIDER env var.
+ * Supports: Gemini (default), OpenAI, Grok.
+ *
+ * All prompt-specific logic is co-located here so callers stay clean.
+ */
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { extractJSON } from "../utils/extractJSON.js";
@@ -7,167 +16,302 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// ── Model instantiation ──────────────────────────────────────────────
-const llm = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
-    apiKey: process.env.GOOGLE_API_KEY,
-    temperature: 0.7,
-});
-
-const parser = new StringOutputParser();
-
-// ── Chain factory ────────────────────────────────────────────────
-function buildChain(templateString) {
-    const prompt = PromptTemplate.fromTemplate(templateString);
-    return prompt.pipe(llm).pipe(parser);
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider factory — swap via LLM_PROVIDER=openai|grok|gemini
+// ─────────────────────────────────────────────────────────────────────────────
+function buildPrimaryLlm() {
+    const provider = (process.env.LLM_PROVIDER || "gemini").toLowerCase();
+    switch (provider) {
+        case "openai":
+            return new ChatOpenAI({
+                model: process.env.OPENAI_MODEL || "gpt-4o",
+                apiKey: process.env.OPENAI_API_KEY,
+                temperature: 0.8,
+            });
+        case "gemini":
+        default:
+            return new ChatGoogleGenerativeAI({
+                model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+                apiKey: process.env.GOOGLE_API_KEY,
+                temperature: 0.8,
+            });
+    }
 }
 
-// ── 1. Question generation ───────────────────────────────────────
-const questionChain = buildChain(`
-You are a friendly technical interviewer. Generate ONE specific {difficulty} {category} question based on these skills: {skills}.
-Context: Role: {role}, Level: {level}.
+function buildFallbackLlm() {
+    return new ChatOpenAI({
+        model: "grok-beta",
+        configuration: { baseURL: "https://api.x.ai/v1" },
+        apiKey: process.env.GROK_API_KEY,
+        temperature: 0.8,
+    });
+}
 
-Language Rules:
-- Use simple, plain English (no SAT words or overly academic phrasing).
-- Sound like a human engineer chatting, not a standardized test.
-- Be direct and clear.
+const primaryLlm = buildPrimaryLlm();
+const fallbackLlm = buildFallbackLlm();
+const parser = new StringOutputParser();
 
-Question Variation Rules:
-- Category {category} implies:
-  * Concept: How something works in simple terms.
-  * Implementation: How you would actually write or use it.
-  * Debugging: How you'd fix a common mistake.
-  * Optimization: How you'd make it faster or better.
+// ─────────────────────────────────────────────────────────────────────────────
+// Core abstraction: generateResponse(prompt, options)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Universal LLM call.
+ * @param {string} prompt       - The fully-rendered prompt string.
+ * @param {object} [options]
+ * @param {boolean} [options.json=false]    - Parse response as JSON.
+ * @param {boolean} [options.fallback=true] - Use Grok fallback on failure.
+ * @param {number}  [options.temperature]   - Override temperature.
+ * @returns {Promise<string|object>}
+ */
+export async function generateResponse(prompt, options = {}) {
+    const { json = false, fallback = true, temperature } = options;
 
-Difficulty Rules:
-- Beginner: Basic syntax and "how-to" questions.
-- Intermediate: Practical "real-world" scenario or logic.
-- Advanced: Architectural trade-offs or complex internals.
+    const llm = temperature
+        ? primaryLlm.bind({ temperature })
+        : primaryLlm;
 
-Constraints:
-1. Strictly under 30 words.
-2. Focus on exactly one concept.
-3. Don't repeat concepts from this list: {previousQuestions}.
-4. Output ONLY the question text.
-`);
+    const invoke = async (model) => {
+        const messages = [{ role: "user", content: prompt }];
+        const result = await model.invoke(messages);
+        return typeof result === "string" ? result : result.content;
+    };
 
-// ── 2. Follow-up Question generation ──────────────────────────────
-const followUpChain = buildChain(`
-You are a friendly technical colleague. The candidate just gave an answer that needs a bit more detail.
-Ask a clear, simple follow-up to help them explain the tricky parts of their last answer.
+    let raw;
+    try {
+        raw = await invoke(llm);
+    } catch (primaryErr) {
+        if (!fallback) throw primaryErr;
+        console.warn(`[LLM] Primary failed: ${primaryErr?.message?.slice(0, 80)}`);
+        console.warn("[LLM] Switching to Grok fallback...");
+        raw = await invoke(fallbackLlm);
+    }
 
-Role: {role}
-Level: {level}
-Question: {question}
-Candidate's Answer: {answer}
-Feedback: {feedback}
+    return json ? extractJSON(raw) : raw;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chain factory (for template-based calls — used internally only)
+// ─────────────────────────────────────────────────────────────────────────────
+function buildChain(llmInstance, templateString) {
+    const prompt = PromptTemplate.fromTemplate(templateString);
+    return prompt.pipe(llmInstance).pipe(parser);
+}
+
+async function invokeWithFallback(primaryChain, fallbackChain, inputs) {
+    try {
+        return await primaryChain.invoke(inputs);
+    } catch (err) {
+        console.warn(`[LLM] Primary chain failed: ${err?.message?.slice(0, 80)}`);
+        return fallbackChain.invoke(inputs);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Templates
+// ─────────────────────────────────────────────────────────────────────────────
+
+const QUESTION_TEMPLATE = `
+You are a senior technical interviewer at a top-tier product company (Google, Meta, Amazon, Stripe, Atlassian).
+
+Ask ONE highly realistic interview question for a {role} ({level} level) on the skill: {skills}.
+Question type: {category} | Difficulty: {difficulty}
+
+Category guidelines:
+- Concept: Probe WHY systems behave a certain way. ("Why does React sometimes re-render unnecessarily?")
+- Implementation: Small but realistic coding challenge. ("Implement a rate limiter without external libraries.")
+- Debugging: Real production bug scenario. ("Your API memory grows under load — how do you debug?")
+- Optimization: Performance / scalability trade-offs. ("How would you scale a real-time chat to 1M users?")
+
+Difficulty:
+- easy: Core fundamentals, junior level.
+- medium: Real-world trade-offs, mid-level.
+- hard: Senior architecture, performance tuning, deep system behaviour.
 
 Rules:
-1. Use natural, conversational English. No corporate jargon.
-2. Focus on digging into that one specific thing they missed or explained vaguely.
-3. Don't repeat the original question.
-4. Output ONLY the follow-up question text.
-`);
+1. Sound like a real human interviewer. Start directly with the question.
+2. Optionally open with a brief scenario: "You're building a payments service..."
+3. Avoid textbook language: "Explain", "Define", "Describe".
+4. Never repeat: {previousQuestions}
+5. Max 50 words.
+6. Output ONLY the question text.
+`;
 
-// ── 3. Answer evaluation ─────────────────────────────────────────
-const evaluationChain = buildChain(`
-Evaluate the user's answer for a technical interview.
-Role: {role}
-Level: {level}
+const FOLLOWUP_TEMPLATE = `
+You are a senior interviewer probing a vague answer in a real technical interview.
+
+Role: {role} | Level: {level}
+Original Question: {question}
+Candidate's Answer: {answer}
+Gap: {feedback}
+
+Write a sharp, targeted follow-up that:
+1. Directly targets the specific gap.
+2. Sounds like natural interviewer speech.
+3. Does NOT restate the original question.
+4. Has a clear correct answer.
+
+Good patterns:
+- "You mentioned [X] — can you walk me through what's happening under the hood?"
+- "What would break in your approach if [edge case]?"
+- "How does that differ from [alternative]?"
+
+Output ONLY the follow-up question. No intro, no labels.
+`;
+
+const EVAL_TEMPLATE = `
+You are a senior technical interviewer completing a scorecard.
+
+Role: {role} ({level} level)
 Question: {question}
-Answer: {answer}
+Candidate's answer: {answer}
 
-Return a JSON object containing:
-- score: An object with "technical", "clarity", "communication", "logic", and "overall" (each 1-10).
-- feedback: A brief critique of the answer (for the final report).
-- conversationalResponse: A supportive, professional, and encouraging 1-sentence response that acknowledges their answer without giving away the score or technical critique (e.g., "That's a solid explanation of the concept, let's keep going!").
-- improvedAnswer: A better version of the answer.
-- isFollowUpNeeded: Boolean. True if the answer was incomplete or partially correct and deserves a follow-up.
+Apply a rigorous, honest hire bar.
 
-Output ONLY valid JSON.
-`);
+Return ONLY valid JSON (no markdown fences):
+{{
+  "score": {{
+    "technical":     <1-10>,
+    "clarity":       <1-10>,
+    "communication": <1-10>,
+    "logic":         <1-10>,
+    "overall":       <1-10 holistic>
+  }},
+  "feedback":              "<2-3 sentence debrief note>",
+  "conversationalResponse": "<1 sentence the interviewer says live without revealing the score>",
+  "improvedAnswer":         "<ideal senior answer with examples and edge cases>",
+  "isFollowUpNeeded":      <true if overall < 7 or significant gaps>
+}}
+`;
 
-// ── 4. Final report ──────────────────────────────────────────────
-const reportChain = buildChain(`
-Analyze the technical interview transcript and generate a structured final Dossier.
-Role: {role}, Level: {level}
+const REPORT_TEMPLATE = `
+You are a hiring committee member writing a post-interview assessment.
 
-Transcript Data:
+Role: {role} ({level} level)
+Transcript:
 {transcript}
 
-Return a JSON object containing:
-- overallScore: Average performance score (1-100).
-- strengths: Top 3 technical/behavioral strengths.
-- weaknesses: Top 3 architectural or knowledge gaps.
-- suggestedTopics: Future learning recommendations.
-- questionAnalysis: An array of objects, each containing:
-    * question: The question text.
-    * answer: The candidate's original answer.
-    * score: The overall score for that answer.
-    * feedback: The critique for that answer.
-    * betterAnswer: The model's ideal answer.
+Return ONLY valid JSON (no markdown):
+{{
+  "overallScore": <1-100 — 70+ Hire, 50-70 Borderline, <50 No Hire>,
+  "summary":    "<One precise sentence capturing overall performance>",
+  "strengths":  ["<specific strength 1>", "<specific strength 2>", "<specific strength 3>"],
+  "weaknesses": ["<concrete gap 1>", "<concrete gap 2>", "<concrete gap 3>"],
+  "suggestedTopics": ["<resource 1>", "<resource 2>", "<resource 3>", "<resource 4>", "<resource 5>"],
+  "questionAnalysis": [
+    {{
+      "question":    "<original question>",
+      "answer":      "<condensed answer>",
+      "score":       <1-10>,
+      "feedback":    "<1-2 sentence critique>",
+      "betterAnswer":"<what a strong answer would have included>"
+    }}
+  ]
+}}
+`;
 
-Output ONLY valid JSON.
-`);
+const MCQ_TEMPLATE = `
+You are a technical assessment designer.
 
-// ── Exported invoke functions ────────────────────────────────────
+Generate {count} multiple-choice questions to assess a {role} candidate on these skills: {skills}.
+Difficulty target: {difficulty}
 
-export async function generateQuestion({ role, level, skills, category, difficulty, questionNumber, previousQuestions }) {
-    return questionChain.invoke({
+Each question must be unambiguous, have exactly one correct answer, and test real applied knowledge.
+
+Return ONLY valid JSON array (no markdown):
+[
+  {{
+    "id":       "<uuid or sequential string>",
+    "question": "<question text>",
+    "options":  {{ "A": "...", "B": "...", "C": "...", "D": "..." }},
+    "answer":   "<A|B|C|D>",
+    "skill":    "<which skill this tests>",
+    "difficulty": "{difficulty}"
+  }}
+]
+`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Build chains once at startup
+// ─────────────────────────────────────────────────────────────────────────────
+const chains = {
+    question: [buildChain(primaryLlm, QUESTION_TEMPLATE), buildChain(fallbackLlm, QUESTION_TEMPLATE)],
+    followUp: [buildChain(primaryLlm, FOLLOWUP_TEMPLATE), buildChain(fallbackLlm, FOLLOWUP_TEMPLATE)],
+    evaluate: [buildChain(primaryLlm, EVAL_TEMPLATE), buildChain(fallbackLlm, EVAL_TEMPLATE)],
+    report: [buildChain(primaryLlm, REPORT_TEMPLATE), buildChain(fallbackLlm, REPORT_TEMPLATE)],
+    mcq: [buildChain(primaryLlm, MCQ_TEMPLATE), buildChain(fallbackLlm, MCQ_TEMPLATE)],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Exported domain functions (called by services — never by controllers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function generateQuestion({
+    role, level, skills, category, difficulty, questionNumber, previousQuestions,
+}) {
+    return invokeWithFallback(chains.question[0], chains.question[1], {
         role,
         level,
         category: category || "Concept",
-        difficulty: difficulty || "standard",
+        difficulty: difficulty || "medium",
         skills: Array.isArray(skills) ? skills.join(", ") : skills,
         questionNumber: String(questionNumber),
-        previousQuestions: previousQuestions.length ? previousQuestions.join(", ") : "None",
+        previousQuestions: previousQuestions?.length ? previousQuestions.join(" | ") : "None",
     });
 }
 
 export async function generateFollowUp({ role, level, question, answer, feedback }) {
-    return followUpChain.invoke({
-        role,
-        level,
-        question,
-        answer,
-        feedback,
+    return invokeWithFallback(chains.followUp[0], chains.followUp[1], {
+        role, level, question, answer, feedback,
     });
 }
 
 export async function evaluateAnswer({ role, level, question, answer }) {
-    const raw = await evaluationChain.invoke({ role, level, question, answer });
+    const raw = await invokeWithFallback(chains.evaluate[0], chains.evaluate[1], {
+        role, level, question, answer,
+    });
+    return extractJSON(raw);
+}
+
+export async function generateMCQs({ role, skills, difficulty = "medium", count = 7 }) {
+    const raw = await invokeWithFallback(chains.mcq[0], chains.mcq[1], {
+        role,
+        skills: Array.isArray(skills) ? skills.join(", ") : skills,
+        difficulty,
+        count: String(count),
+    });
     return extractJSON(raw);
 }
 
 export async function generateFinalReport({ role, level, history }) {
-    // 1. Calculate Skill Scores from history
+    // Build per-skill score map from history
     const skillMap = {};
-    history.forEach(h => {
+    history.forEach((h) => {
         if (!h.skill) return;
         if (!skillMap[h.skill]) skillMap[h.skill] = [];
-        skillMap[h.skill].push(h.evaluation.score?.overall || 0);
+        skillMap[h.skill].push(h.evaluation?.score?.overall ?? 0);
     });
 
-    const skillScores = {};
-    Object.keys(skillMap).forEach(skill => {
-        const scores = skillMap[skill];
-        skillScores[skill] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-    });
+    const skillScores = Object.fromEntries(
+        Object.entries(skillMap).map(([skill, scores]) => [
+            skill,
+            Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+        ])
+    );
 
-    // 2. Build Transcript for LLM (Focus on quality, not raw JSON)
     const transcript = history
         .map(
             (h, i) =>
-                `Q${i + 1} (${h.skill}): ${h.question}\nAnswer: ${h.answer}\nScore: ${h.evaluation.score?.overall || 0}/10\nEvaluation: ${h.evaluation.feedback}`
+                `Q${i + 1} [${h.skill}]: ${h.question}\n` +
+                `Candidate: ${h.answer}\n` +
+                `Score: ${h.evaluation?.score?.overall ?? 0}/10\n` +
+                `Notes: ${h.evaluation?.feedback}`
         )
         .join("\n\n");
 
-    const raw = await reportChain.invoke({ role, level, transcript });
+    const raw = await invokeWithFallback(chains.report[0], chains.report[1], {
+        role, level, transcript,
+    });
     const report = extractJSON(raw);
 
-    // 3. Return report with merged skill scores
-    return {
-        ...report,
-        skillScores
-    };
+    return { ...report, skillScores };
 }

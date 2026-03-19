@@ -138,10 +138,17 @@ const InterviewPage = () => {
 
     try {
       const resp = await axios.post(`${BASE_URL}/answer`, { sessionId, answer: userEntry });
-      const { conversationalResponse, nextQuestion, questionNumber: nNum, skill: nSkill, isComplete: done } = resp.data;
+      const { conversationalResponse, nextQuestion, questionNumber: nNum, skill: nSkill, isComplete: done, score, feedback, betterAnswer } = resp.data;
 
-      // Add AI Acknowledgment bubble
-      setRounds(prev => [...prev, { type: 'ai', text: conversationalResponse, isAck: true }]);
+      // Add AI Acknowledgment bubble + Immediate Feedback (Integrated from InterviewChat logic)
+      setRounds(prev => [...prev, { 
+        type: 'ai', 
+        text: conversationalResponse, 
+        isAck: true,
+        score,
+        feedback,
+        betterAnswer
+      }]);
 
       if (nextQuestion && !done) {
         setQuestionNumber(nNum);
@@ -402,12 +409,35 @@ const InterviewPage = () => {
                     <div className="w-12 h-12 bg-white text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg"><User size={22} /></div>
                  </div>
                )}
-               {/* Historical AI Acknowledgment */}
+               {/* Historical AI Acknowledgment & Feedback */}
                {round.isAck && (
                  <div className="flex items-start gap-6 max-w-[85%] pb-4">
                     <div className="w-9 h-9 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 shrink-0 border border-emerald-500/20"><Sparkles size={16} /></div>
-                    <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl px-6 py-4 text-emerald-400/80 text-[15px] font-medium italic backdrop-blur-md shadow-sm">
-                       {round.text}
+                    <div className="space-y-4 w-full">
+                        <div className="bg-white/[0.02] border border-white/[0.04] rounded-2xl px-6 py-4 text-emerald-400/80 text-[15px] font-medium italic backdrop-blur-md shadow-sm">
+                           {round.text}
+                        </div>
+                        
+                        {/* Integrated Real-Time Feedback Logic */}
+                        {round.score && (
+                           <div className="bg-[#11111d]/50 border border-white/5 rounded-2xl p-5 space-y-4">
+                               <div className="flex items-center gap-4">
+                                  <div className={cn("px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest", 
+                                      round.score.overall >= 7 ? "bg-emerald-500/20 text-emerald-400" :
+                                      round.score.overall >= 5 ? "bg-amber-500/20 text-amber-400" : "bg-rose-500/20 text-rose-400")}>
+                                     Score: {round.score.overall}/10
+                                  </div>
+                                  <p className="text-sm text-white/60 font-medium">{round.feedback}</p>
+                               </div>
+                               
+                               {round.betterAnswer && (
+                                  <div className="pt-3 border-t border-white/5">
+                                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">Ideal Response Pattern</p>
+                                      <p className="text-sm text-white/50 leading-relaxed font-sans">{round.betterAnswer}</p>
+                                  </div>
+                               )}
+                           </div>
+                        )}
                     </div>
                  </div>
                )}
