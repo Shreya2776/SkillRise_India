@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { cn } from '../services/utils';
+import PreAssessment from '../components/common/PreAssessment.jsx';
 
 const BASE_URL = "http://localhost:5000/api/interview";
 
@@ -64,6 +65,7 @@ const InterviewPage = () => {
   
   // ── States ──
   const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [isAssessing, setIsAssessing] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const [recentDossier, setRecentDossier] = useState(null);
   
@@ -104,12 +106,25 @@ const InterviewPage = () => {
 
   // ── Logic ──
 
-  const handleBeginAssessment = async () => {
+  const handleCompleteAssessment = ({ difficulty }) => {
+    setLevel(difficulty);
+    setIsAssessing(false);
+    handleBeginAssessment(difficulty);
+  };
+
+  const handleBeginAssessment = async (overrideDifficulty = null) => {
     setLoading(true);
     setIsStarted(true);
     setRounds([]);
     try {
-      const response = await axios.post(`${BASE_URL}/start`, { role, level, skills, maxQuestions });
+      const startLevel = typeof overrideDifficulty === 'string' ? overrideDifficulty : level;
+      const response = await axios.post(`${BASE_URL}/start`, { 
+        role, 
+        level: startLevel, 
+        skills, 
+        maxQuestions,
+        initialDifficulty: startLevel 
+      });
       const { sessionId: sid, question, questionNumber: qNum, skill } = response.data;
       setSessionId(sid);
       setQuestionNumber(qNum);
@@ -322,6 +337,17 @@ const InterviewPage = () => {
   }
 
   if (isSetupComplete && !isStarted) {
+    if (isAssessing) {
+       return (
+          <div className="w-full h-full bg-[#050505] flex flex-col items-center justify-center p-12 relative overflow-hidden">
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-emerald-600/[0.04] blur-[100px] rounded-full pointer-events-none" />
+             <div className="relative z-10 w-full">
+                <PreAssessment role={role} skills={skills} onComplete={handleCompleteAssessment} />
+             </div>
+          </div>
+       );
+    }
+
     return (
       <div className="w-full h-full bg-[#050505] flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-indigo-600/[0.08] blur-[150px] rounded-full pointer-events-none animate-pulse" />
@@ -331,11 +357,15 @@ const InterviewPage = () => {
                <h2 className="text-7xl font-black text-white tracking-tighter leading-none">SYSTEM <br /> <span className="text-indigo-400 italic">CALIBRATED</span></h2>
                <p className="text-white/30 text-xl font-medium max-w-lg mx-auto leading-relaxed">Prepare for a high-intensity technical dialogue. Gemini is scanning your profile for {role}.</p>
             </div>
-            <div className="pt-10">
-               <p className="text-indigo-500/40 text-[11px] font-black uppercase tracking-[1em] mb-10 animate-pulse">[ PRESS ENTER TO ENGAGE ]</p>
-               <button onClick={handleBeginAssessment} className="group px-24 py-8 bg-white text-black rounded-full text-xs font-black uppercase tracking-[1.5em] hover:bg-indigo-600 hover:text-white transition-all shadow-4xl relative overflow-hidden">
-                  <span className="relative z-10">ENGAGE</span>
-                  <div className="absolute inset-0 bg-indigo-500 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <div className="pt-10 flex flex-col items-center gap-6">
+               <p className="text-indigo-500/40 text-[11px] font-black uppercase tracking-[1em] mb-4 animate-pulse">[ AWAITING DIRECTIVE ]</p>
+               
+               <button onClick={() => setIsAssessing(true)} className="group px-24 py-8 bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-black uppercase tracking-[0.5em] hover:bg-emerald-500 hover:text-white transition-all shadow-xl relative overflow-hidden w-full max-w-md">
+                   <span className="relative z-10 block text-center w-full">CALIBRATE NEURAL LINK</span>
+               </button>
+
+               <button onClick={() => handleBeginAssessment()} className="group px-24 py-5 bg-white/5 border border-white/10 text-white/40 rounded-full text-[10px] font-black uppercase tracking-[1em] hover:bg-white hover:text-black transition-all w-full max-w-md">
+                  ENGAGE DIRECTLY (SKIP)
                </button>
             </div>
          </div>
