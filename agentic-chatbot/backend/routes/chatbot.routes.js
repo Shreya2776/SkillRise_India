@@ -30,6 +30,18 @@ const upload = multer({
   }
 });
 
-router.post('/message', upload.single('resume'), chatbotController.handleMessage);
+router.post('/message', (req, res, next) => {
+  upload.single('resume')(req, res, function(err) {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred when uploading.
+      return res.status(400).json({ error: 'File upload error', details: err.message });
+    } else if (err) {
+      // An unknown error occurred when uploading (e.g. mimetype rejection).
+      return res.status(400).json({ error: 'Invalid file', details: err.message });
+    }
+    // Everything went fine.
+    next();
+  });
+}, chatbotController.handleMessage);
 
 module.exports = router;

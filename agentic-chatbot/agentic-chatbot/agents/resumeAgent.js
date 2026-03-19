@@ -53,9 +53,7 @@ async function resumeAgent(state) {
 
     console.log(`[ResumeAgent] Analyzing resume found at: ${resumeFilePath}`);
 
-    const resumeBuffer = fs.readFileSync(resumeFilePath);
-
-    const resumeData = await resumeAnalyzer(resumeBuffer);
+    const resumeData = await resumeAnalyzer(resumeFilePath);
 
     if (!resumeData || typeof resumeData !== 'object' || Object.keys(resumeData).length === 0) {
       console.warn("[ResumeAgent] Warning: Analyzer returned empty results.");

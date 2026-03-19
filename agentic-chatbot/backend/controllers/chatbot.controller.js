@@ -86,7 +86,7 @@ const handleMessage = async (req, res) => {
 
   } catch (error) {
     console.error('[ChatbotRoute] Error handling message:', error);
-    res.status(500).json({ error: 'Internal server error while processing AI graphs' });
+    res.status(500).json({ error: 'Internal server error while processing AI graphs', details: error.stack || error.message || String(error) });
   }
 };
 
