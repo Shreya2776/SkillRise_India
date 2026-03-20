@@ -88,17 +88,24 @@ INSTRUCTIONS:
    - Mid: moderate + practical situations
    - Senior: complex + decision-making + edge cases
 
-7. Quality Rules:
+7. Language & Simplicity (CRITICAL):
+   - Use plain, simple English. 
+   - Each question must be SHORT (max 20 words).
+   - ONE SENTENCE ONLY. No multi-part questions.
+   - Friendly and conversational tone.
+
+8. Quality Rules:
+   - No multi-sentence questions.
    - No generic questions like "Tell me about yourself".
    - No repetition.
    - No explanations.
 
-8. Output Format:
+9. Output Format:
    - Return ONLY a valid JSON array of strings.
-   - No markdown, no text outside JSON.
+   - No markdown.
 
 Example Output:
-["Question 1", "Question 2"]
+["How do you handle a short circuit?", "What tools do you use for wiring?"]
 `;
 
   try {
