@@ -24,7 +24,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 import ProfileSetup from "./pages/ProfileSetup";
 import ProfileDashboard from "./pages/ProfileDashboard";
-
+import Layout from "./components/Layout.jsx";
 function App() {
 
   return (
@@ -38,8 +38,22 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/profile" element={<ProfileSetup />} />
-        <Route path="/profile/dashboard" element={<ProfileDashboard />} />
+        <Route
+  path="/profile"
+  element={
+    <Layout>
+      <ProfileSetup />
+    </Layout>
+  }
+/>
+        <Route
+  path="/profile/dashboard"
+  element={
+    <Layout>
+      <ProfileDashboard />
+    </Layout>
+  }
+/>
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
