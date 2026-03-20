@@ -7,11 +7,11 @@ if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "dummy_key");
 
 /**
- * PRODUCTION MODEL: gemini-1.5-flash
+ * PRODUCTION MODEL: gemini-2.5-flash
  * Strict JSON Response Mode Enabled
  */
 const geminiModel = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+  model: "gemini-2.5-flash",
   generationConfig: {
     responseMimeType: "application/json"
   }

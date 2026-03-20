@@ -15,8 +15,12 @@ export const createInterviewSession = async (req, res, next) => {
       techStack, 
       difficulty, 
       track, 
-      level 
+      level,
+      type,
+      questions: preGeneratedQuestions
     } = req.body;
+
+    const interviewType = type || "technical";
 
     // 1. Pivot Frontend Fields -> Backend Schema
     techStack = techStack || track || "General";
@@ -47,7 +51,9 @@ export const createInterviewSession = async (req, res, next) => {
     if (!template) {
       console.log(`📡 [CACHE MISS] Generating questions for [${role}] via AI...`);
       try {
-        const questions = await generateQuestions(role, techStack, difficulty);
+        const questions = preGeneratedQuestions?.length > 0
+          ? preGeneratedQuestions
+          : await generateQuestions(role, techStack, difficulty, interviewType);
         template = await InterviewTemplate.create({
           role: role.trim(),
           techStack,

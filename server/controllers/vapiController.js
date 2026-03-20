@@ -55,10 +55,10 @@ export const generateVapiToken = async (req, res, next) => {
  */
 export const generateQuestions = async (req, res, next) => {
   try {
-    const { role, level, techstack, amount = 10 } = req.body;
+    const { role, level, techstack, type = "technical", amount = 10 } = req.body;
 
     // Normalize caching key
-    const techString = techstack?.sort().join(",") || "general";
+    const techString = (Array.isArray(techstack) ? techstack.sort().join(", ") : techstack) || "General";
     const cacheKey = `[${role}]-[${level}]-[${techString}]`.toLowerCase();
 
     // 1. Check template cache (role, level, techstack)
@@ -74,10 +74,11 @@ export const generateQuestions = async (req, res, next) => {
     }
 
     // 2. Cache MISS: Generate via AI
-    console.log(`❌ [CACHE MISS] No bank found for ${cacheKey}. Calling AI Brain...`);
+    console.log(`❌ [CACHE MISS] ${cacheKey}`);
+    console.log(`🧠 [AI PROMPT] role=${role}, skills=${techString}, level=${level}, type=${type}, count=${amount}`);
 
     try {
-      const questions = await callAiToGenerate(role, techString, level);
+      const questions = await callAiToGenerate(role, techString, level, type, amount);
 
       console.log(`✅ [AI BRAIN] Success! Generated ${questions.length} questions.`);
 

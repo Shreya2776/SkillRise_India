@@ -5,12 +5,14 @@ import { extractJSON } from "../utils/aiParsers.js";
  * PRODUCTION-READY AI UTILITIES (GEMINI 1.5 FLASH)
  */
 
-const withTimeout = (promise, ms = 10000) => {
+const withTimeout = (promise, ms = 20000) => {
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error(`Timeout: AI did not respond within ${ms / 1000}s`)), ms)
   );
   return Promise.race([promise, timeout]);
 };
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const withRetry = async (fn, retries = 2) => {
   let lastError;
@@ -19,37 +21,103 @@ const withRetry = async (fn, retries = 2) => {
       return await fn();
     } catch (err) {
       lastError = err;
-      if (i < retries) console.warn(`⚠️ [AI SERVICE] Attempt ${i + 1} failed. Retrying...`);
+      if (i < retries) {
+        const waitSec = (i + 1) * 5; // 5s, 10s backoff
+        console.warn(`⚠️ [AI SERVICE] Attempt ${i + 1} failed. Retrying in ${waitSec}s...`);
+        await delay(waitSec * 1000);
+      }
     }
   }
   throw lastError;
 };
 
 /**
- * GENERATE QUESTIONS (10 items, Strict JSON)
+ * GENERATE QUESTIONS (Production Prompt Engine)
  */
-export const generateQuestions = async (role, techStack, difficulty) => {
-  const prompt = `Generate exactly 10 unique interview questions for a ${role} position.
-  Focus: ${techStack || "General Software Engineering"}
-  Level: ${difficulty}
-  
-  RULES:
-  1. Return ONLY a valid JSON array of 10 strings.
-  2. No preamble, no explanation, no markdown.
-  
-  Example: ["Question 1", "Question 2", ...]`;
+export const generateQuestions = async (
+  role,
+  techStack,
+  difficulty,
+  type = "technical",
+  count = 5
+) => {
+  const isGenericSkills = !techStack || techStack === "General" || techStack.trim() === "";
+  const skills = isGenericSkills 
+    ? `(No specific skills provided — derive relevant tools, skills, and domain knowledge from the "${role}" role itself)` 
+    : techStack;
+
+  const prompt = `
+Generate EXACTLY ${count} high-quality interview questions.
+
+CONTEXT:
+- Role: ${role}
+- Skills/Tools: ${skills}
+- Difficulty Level: ${difficulty} (junior / mid / senior)
+- Interview Type: ${type} (technical / behavioral / mixed)
+
+INSTRUCTIONS:
+
+1. Question Count:
+   - Generate EXACTLY ${count} questions.
+   - Do NOT exceed or reduce the count.
+
+2. Skill Relevance:
+   - At least 70-80% questions MUST be based on the provided skills/tools.
+   - If skills are empty, generate role-specific questions.
+
+3. Interview Type Handling:
+   - If "technical": Focus on problem-solving, tools, real-world tasks.
+   - If "behavioral": Focus on communication, teamwork, decision-making.
+   - If "mixed": Combine both (roughly 50-50).
+
+4. Blue-Collar Support:
+   - If role is blue-collar (e.g., electrician, driver, security guard, forklift operator):
+     Ask practical, real-life, job-based questions.
+     Focus on safety, tools, situations, on-site decisions.
+     Avoid theoretical/software-heavy questions.
+
+5. Scenario-Based Questions (VERY IMPORTANT):
+   - At least 50% questions MUST be scenario-based.
+   - Use formats like:
+     "What would you do if..."
+     "How would you handle..."
+     "Suppose you are in a situation where..."
+
+6. Difficulty Control:
+   - Junior: basic + simple scenarios
+   - Mid: moderate + practical situations
+   - Senior: complex + decision-making + edge cases
+
+7. Quality Rules:
+   - No generic questions like "Tell me about yourself".
+   - No repetition.
+   - No explanations.
+
+8. Output Format:
+   - Return ONLY a valid JSON array of strings.
+   - No markdown, no text outside JSON.
+
+Example Output:
+["Question 1", "Question 2"]
+`;
 
   try {
     const rawResult = await withRetry(async () => {
-      const result = await withTimeout(geminiModel.generateContent(prompt));
+      const result = await withTimeout(
+        geminiModel.generateContent(prompt)
+      );
       const response = await result.response;
       return response.text();
     });
 
     const parsed = extractJSON(rawResult);
-    if (!Array.isArray(parsed)) throw new Error("AI returned JSON but it is not an array.");
-    
-    return parsed.slice(0, 10); // Enforce exact count
+
+    if (!Array.isArray(parsed)) {
+      throw new Error("AI returned non-array format");
+    }
+
+    return parsed.slice(0, count);
+
   } catch (err) {
     console.error("❌ [AI SERVICE] Question Generation Failed:", err.message);
     throw err;
