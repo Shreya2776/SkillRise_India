@@ -1,33 +1,45 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const morgan = require("morgan");
-const rateLimit = require("express-rate-limit");
+import "dotenv/config";
+import express, { json } from "express";
+import cors from "cors";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
 
-const connectDB = require("./config/db");
-const errorHandler = require("./middleware/error");
+// Local imports MUST include .js in ESM
+import connectDB from "./config/db.js";
+import errorHandler from "./middleware/error.js";
 
 // Route imports
-const authRoutes = require("./routes/auth");
-const interviewRoutes = require("./routes/interviews");
-const vapiRoutes = require("./routes/vapi");
+import authRoutes from "./routes/auth.js";
+import interviewRoutes from "./routes/interviews.js";
+import vapiRoutes from "./routes/vapi.js";
 
 // Connect to MongoDB
 connectDB();
 
 const app = express();
 
-// Security middleware
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { success: false, message: "Too many requests, please try again later." },
-});
-
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173", credentials: true }));
-app.use(express.json({ limit: "10mb" }));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://localhost:5173",
+  process.env.CLIENT_URL
+].filter(Boolean);
+
+app.use(cors({ 
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+app.use(json({ limit: "10mb" }));
 app.use(morgan("dev"));
+
+// Rate limiting (High limit for testing)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+});
 app.use("/api/", limiter);
 
 // Routes
@@ -37,38 +49,19 @@ app.use("/api/vapi", vapiRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ success: true, message: "Interview Prep API is running", timestamp: new Date() });
+  res.json({ success: true, status: "API Online", engine: "Gemma-3-4B" });
 });
 
-// 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
 });
 
-// Error handler (must be last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log("VAPI KEY:", process.env.VAPI_PRIVATE_KEY || process.env.VAPI_API_KEY);
   console.log(`📡 API: http://localhost:${PORT}/api`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-
-  // Ensure Guest User exists (Auth-Free Mode)
-  try {
-    const User = require("./models/User");
-    const GUEST_ID = "6673f0000000000000000000";
-    const guestExists = await User.findById(GUEST_ID);
-    if (!guestExists) {
-      await User.create({
-        _id: GUEST_ID,
-        name: "Guest User",
-        email: "guest@interviewai.com",
-        password: "password123", // required by model
-      });
-      console.log("✅ Guest User created for Auth-Free Mode.");
-    }
-  } catch (error) {
-    console.warn("⚠️ Could not ensure Guest User:", error.message);
-  }
+  console.log("✅ Vapi Secure Proxy Active");
 });

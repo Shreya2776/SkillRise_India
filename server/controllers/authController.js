@@ -1,6 +1,6 @@
-const jwt = require("jsonwebtoken");
-const { validationResult } = require("express-validator");
-const User = require("../models/User");
+import jwt from "jsonwebtoken";
+import { validationResult } from "express-validator";
+import User from "../models/User.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -8,10 +8,7 @@ const generateToken = (id) => {
   });
 };
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
-const register = async (req, res, next) => {
+export const register = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -47,10 +44,7 @@ const register = async (req, res, next) => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-const login = async (req, res, next) => {
+export const login = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -92,10 +86,7 @@ const login = async (req, res, next) => {
   }
 };
 
-// @desc    Get current user
-// @route   GET /api/auth/me
-// @access  Private
-const getMe = async (req, res, next) => {
+export const getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
     res.json({
@@ -115,10 +106,7 @@ const getMe = async (req, res, next) => {
   }
 };
 
-// @desc    Update profile
-// @route   PUT /api/auth/profile
-// @access  Private
-const updateProfile = async (req, res, next) => {
+export const updateProfile = async (req, res, next) => {
   try {
     const { name, avatar } = req.body;
     const user = await User.findByIdAndUpdate(
@@ -140,5 +128,3 @@ const updateProfile = async (req, res, next) => {
     next(error);
   }
 };
-
-module.exports = { register, login, getMe, updateProfile };

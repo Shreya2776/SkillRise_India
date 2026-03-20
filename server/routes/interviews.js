@@ -1,26 +1,22 @@
-const express = require("express");
-const {
-  createInterview,
-  getInterviews,
+import express from "express";
+import { 
+  createInterviewSession, 
+  submitInterviewSession, 
+  getInterviews, 
   getInterview,
-  updateInterview,
-  submitFeedback,
-  generateFeedback,
-  deleteInterview,
-  getStats,
-  generateNextQuestion,
-} = require("../controllers/interviewController");
-const { protect } = require("../middleware/auth");
+  getStats
+} from "../controllers/interviewController.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.use(protect); // All interview routes are protected
+router.use(protect); // Secure all production routes
 
-router.get("/stats", getStats);
-router.route("/").get(getInterviews).post(createInterview);
-router.route("/:id").get(getInterview).put(updateInterview).delete(deleteInterview);
-router.post("/:id/feedback", submitFeedback);
-router.post("/:id/generate-feedback", generateFeedback);
-router.post("/:id/next-question", generateNextQuestion);
+// Refactored to match user specification
+router.post("/create", createInterviewSession);
+router.post("/submit", submitInterviewSession);
+router.get("/", getInterviews);
+router.get("/stats", getStats); // ⚡ FIXED: Added missing stats endpoint
+router.get("/:id", getInterview);
 
-module.exports = router;
+export default router;

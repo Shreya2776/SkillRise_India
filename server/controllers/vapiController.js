@@ -1,73 +1,102 @@
-const { gemini2Flash } = require("../config/googleAI");
+import axios from "axios";
+import { generateQuestions as callAiToGenerate } from "../services/geminiService.js";
+import { InterviewTemplate } from "../models/Interview.js";
+import fallbacks from "../utils/fallbacks.js";
 
-// @desc    Generate a session token for Vapi (Secure Server-Side Flow)
-// @route   POST /api/vapi/token
-// @access  Private
-const generateVapiToken = async (req, res, next) => {
+/**
+ * ⚡ GENERATE VAPI TOKEN (Secure Proxy Flow)
+ * Refactored to catch 'value' as per user requirement. (Zero-Key exposure)
+ */
+export const generateVapiToken = async (req, res, next) => {
   try {
-    console.log("📡 Requesting session token from Vapi...");
-    const response = await fetch("https://api.vapi.ai/token", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const vapiKey = process.env.VAPI_PRIVATE_KEY || process.env.VAPI_API_KEY;
 
-    const data = await response.json();
-
-    if (!data.token) {
-      console.error("❌ Vapi Token Error:", data);
-      return res.status(500).json({ error: "Token generation failed" });
+    if (!vapiKey) {
+      console.error("❌ VAPI_PRIVATE_KEY is missing in your .env configuration.");
+      return res.status(500).json({ success: false, message: "Server misconfigured: Vapi Key missing." });
     }
 
-    console.log("✅ Vapi Token issued successfully.");
-    res.json({ token: data.token });
+    console.log("📡 Requesting session token from Vapi.ai API...");
+
+    const response = await axios.post("https://api.vapi.ai/token", { tag: "public" }, {
+      headers: {
+        Authorization: `Bearer ${vapiKey}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 10000 // 10s Token Handshake
+    });
+
+    console.log("📡 [VAPI DEBUG] Raw Token Response Data:", JSON.stringify(response.data, null, 2));
+
+    // Fix: Using 'value' property from Vapi response if available (or fallback to 'token')
+    const token = response.data.value || response.data.token;
+
+    if (token) {
+      console.log(`✅ Vapi Token Issued Successfully: [${token.slice(0, 8)}...]`);
+      // Return: { token: value } as requested
+      res.json({ success: true, token });
+    } else {
+      console.error("❌ Vapi API responded without a 'value' or 'token'.");
+      res.status(500).json({ success: false, message: "Vapi response error: Missing token property." });
+    }
 
   } catch (err) {
-    console.error("❌ Vapi Token Backend Error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("❌ Vapi Authentication Failure:", err.response?.data || err.message);
+    res.status(err.response?.status || 500).json({
+      success: false,
+      message: "Vapi Connection Refused or Unauthorized.",
+      details: err.response?.data
+    });
   }
 };
 
-// @desc    Generate interview questions using Gemini 2.0 Flash
-// @route   POST /api/vapi/generate-questions
-// @access  Private
-const generateQuestions = async (req, res, next) => {
+/**
+ * ⚡ GENERATE QUESTIONS FOR WIZARD
+ */
+export const generateQuestions = async (req, res, next) => {
   try {
-    const { userCategory, role, type, level, techstack, amount = 5 } = req.body;
+    const { role, level, techstack, amount = 10 } = req.body;
 
-    let categoryContext = "";
-    if (userCategory === "blue-collar") {
-      categoryContext = `
-Context for Generation:
-- Blue Collar: Focus on safety, situational awareness, equipment mastery, and reliability. 100% practical.`;
-    } else if (userCategory === "white-collar") {
-      categoryContext = `
-Context for Generation:
-- White Collar: Focus on technical architecture, leadership, and professional experience.`;
-    } else if (userCategory === "student") {
-      categoryContext = `
-Context for Generation:
-- Student: Focus on core fundamentals, learning aptitude, and projects.`;
+    // Normalize caching key
+    const techString = techstack?.sort().join(",") || "general";
+    const cacheKey = `[${role}]-[${level}]-[${techString}]`.toLowerCase();
+
+    // 1. Check template cache (role, level, techstack)
+    let template = await InterviewTemplate.findOne({
+      role: role.trim(),
+      difficulty: level,
+      techStack: techString,
+    });
+
+    if (template) {
+      console.log(`✅ [CACHE HIT] Question Bank found for ${cacheKey}. Zero AI hit required.`);
+      return res.json({ success: true, questions: template.questions.slice(0, amount) });
     }
 
-    const prompt = `Generate exactly ${amount} interview questions for a ${level} ${role} in the ${userCategory} sector.
-Interview Track: ${type}
-${techstack?.length ? `Key Skills/Tools: ${techstack.join(", ")}` : ""}
-${categoryContext}
+    // 2. Cache MISS: Generate via AI
+    console.log(`❌ [CACHE MISS] No bank found for ${cacheKey}. Calling AI Brain...`);
 
-Return ONLY a valid JSON array of strings.`;
+    try {
+      const questions = await callAiToGenerate(role, techString, level);
 
-    const result = await gemini2Flash.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    const questions = JSON.parse(text);
+      console.log(`✅ [AI BRAIN] Success! Generated ${questions.length} questions.`);
 
-    res.json({ success: true, questions });
+      // Save for future reuse
+      await InterviewTemplate.create({
+        role: role.trim(),
+        difficulty: level,
+        techStack: techString,
+        questions,
+      });
+
+      res.json({ success: true, questions: questions.slice(0, amount) });
+    } catch (aiErr) {
+      console.warn("⚠️ [AI BRAIN] Generation Failed. Using static fallback database.");
+      const backup = fallbacks[role.toLowerCase()] || fallbacks.fullstack;
+      res.json({ success: true, questions: backup.slice(0, amount) });
+    }
+
   } catch (error) {
     next(error);
   }
 };
-
-module.exports = { generateVapiToken, generateQuestions };

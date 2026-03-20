@@ -1,6 +1,6 @@
-const express = require("express");
-const { generateVapiToken, generateQuestions } = require("../controllers/vapiController");
-const { protect } = require("../middleware/auth");
+import express from "express";
+import { generateVapiToken, generateQuestions } from "../controllers/vapiController.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -10,4 +10,4 @@ router.use(protect); // All Vapi routes are protected
 router.post("/token", generateVapiToken);
 router.post("/generate-questions", generateQuestions);
 
-module.exports = router;
+export default router;
