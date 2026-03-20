@@ -3,7 +3,7 @@ import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Profile from "./pages/Profile.jsx";
+import Profile from "./pages/ProfileSetup.jsx";
 import AICareerAssistant from "./pages/AICareerAssistant.jsx";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer.jsx";
 import SkillGapAnalysis from "./pages/SkillGapAnalysis.jsx";
