@@ -8,11 +8,12 @@ const templateSchema = new mongoose.Schema({
   role: { type: String, required: true },
   techStack: { type: String, required: true },
   difficulty: { type: String, required: true },
+  language: { type: String, default: "English" }, // 🌍 Multilingual support
   questions: [String],
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-templateSchema.index({ role: 1, techStack: 1, difficulty: 1 }, { unique: true });
+templateSchema.index({ role: 1, techStack: 1, difficulty: 1, language: 1 }, { unique: true });
 
 /**
  * SessionSchema: Tracks a specific user's attempt at an interview
@@ -22,6 +23,7 @@ const sessionSchema = new mongoose.Schema({
   role: { type: String, required: true },
   difficulty: { type: String, required: true },
   techStack: { type: String },
+  language: { type: String, default: "English" }, // 🌍 Track session language
   questions: [String],
   answers: [
     {

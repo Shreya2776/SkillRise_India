@@ -39,7 +39,8 @@ export const generateQuestions = async (
   techStack,
   difficulty,
   type = "technical",
-  count = 5
+  count = 5,
+  language = "English"
 ) => {
   const isGenericSkills = !techStack || techStack === "General" || techStack.trim() === "";
   const skills = isGenericSkills 
@@ -54,58 +55,44 @@ CONTEXT:
 - Skills/Tools: ${skills}
 - Difficulty Level: ${difficulty} (junior / mid / senior)
 - Interview Type: ${type} (technical / behavioral / mixed)
+- Language: ${language}
 
 INSTRUCTIONS:
 
-1. Question Count:
+1. Language Enforcement (STRICT):
+   - Generate all questions STRICTLY in ${language}.
+   - If "Hindi": Use simple, conversational Hindi (Devanagari script). Avoid complex Sanskritized words.
+   - If "Hinglish": Use a natural mix of Hindi and English as spoken in daily conversation.
+   - If "English": Use standard plain English.
+
+2. Question Count:
    - Generate EXACTLY ${count} questions.
-   - Do NOT exceed or reduce the count.
 
-2. Skill Relevance:
+3. Skill Relevance:
    - At least 70-80% questions MUST be based on the provided skills/tools.
-   - If skills are empty, generate role-specific questions.
-
-3. Interview Type Handling:
-   - If "technical": Focus on problem-solving, tools, real-world tasks.
-   - If "behavioral": Focus on communication, teamwork, decision-making.
-   - If "mixed": Combine both (roughly 50-50).
 
 4. Blue-Collar Support:
-   - If role is blue-collar (e.g., electrician, driver, security guard, forklift operator):
-     Ask practical, real-life, job-based questions.
-     Focus on safety, tools, situations, on-site decisions.
-     Avoid theoretical/software-heavy questions.
+   - If role is blue-collar: Ask practical, job-based, safety questions.
 
-5. Scenario-Based Questions (VERY IMPORTANT):
-   - At least 50% questions MUST be scenario-based.
-   - Use formats like:
-     "What would you do if..."
-     "How would you handle..."
-     "Suppose you are in a situation where..."
+5. Scenario-Based Questions:
+   - At least 50% questions MUST be scenario-based ("What if...", "How would you handle...").
 
-6. Difficulty Control:
-   - Junior: basic + simple scenarios
-   - Mid: moderate + practical situations
-   - Senior: complex + decision-making + edge cases
-
-7. Language & Simplicity (CRITICAL):
-   - Use plain, simple English. 
+6. Language & Simplicity (CRITICAL):
+   - Use plain, simple language for voice interaction. 
    - Each question must be SHORT (max 20 words).
-   - ONE SENTENCE ONLY. No multi-part questions.
-   - Friendly and conversational tone.
+   - ONE SENTENCE ONLY.
 
-8. Quality Rules:
-   - No multi-sentence questions.
-   - No generic questions like "Tell me about yourself".
+7. Quality Rules:
+   - No generic "Tell me about yourself".
    - No repetition.
    - No explanations.
 
-9. Output Format:
+8. Output Format:
    - Return ONLY a valid JSON array of strings.
    - No markdown.
 
-Example Output:
-["How do you handle a short circuit?", "What tools do you use for wiring?"]
+Example Output (${language}):
+["Question 1 in ${language}", "Question 2 in ${language}"]
 `;
 
   try {
@@ -134,17 +121,21 @@ Example Output:
 /**
  * EVALUATE INTERVIEW (Unified Structure)
  */
-export const evaluateInterview = async (role, questions, answers) => {
+export const evaluateInterview = async (role, questions, answers, language = "English") => {
   const transcript = questions.map((q, i) => ({
     question: q,
     answer: answers[i] || "Candidate provided no answer."
   }));
 
-  const prompt = `Evaluate this ${role} interview transcript.
+  const prompt = `Evaluate this ${language} interview transcript for a ${role} position.
+  The candidate was asked questions and responded in ${language}.
+  
   Transcript: ${JSON.stringify(transcript, null, 2)}
   
   RULES:
-  1. Return ONLY a JSON object with this exact structure:
+  1. Evaluate the quality of answers based on the chosen language (${language}).
+  2. Provide strengths, weaknesses, and suggestions in plain English.
+  3. Return ONLY a JSON object with this exact structure:
      {
        "score": number (0-100),
        "strengths": [string],

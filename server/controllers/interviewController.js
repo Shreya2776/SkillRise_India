@@ -17,10 +17,12 @@ export const createInterviewSession = async (req, res, next) => {
       track, 
       level,
       type,
+      language: reqLanguage,
       questions: preGeneratedQuestions
     } = req.body;
 
     const interviewType = type || "technical";
+    const language = reqLanguage || "English"; // 🌍 Default to English
 
     // 1. Pivot Frontend Fields -> Backend Schema
     techStack = techStack || track || "General";
@@ -46,6 +48,7 @@ export const createInterviewSession = async (req, res, next) => {
       role: role.trim(),
       techStack,
       difficulty,
+      language, // 🌍 Include language in cache key
     });
 
     if (!template) {
@@ -53,11 +56,12 @@ export const createInterviewSession = async (req, res, next) => {
       try {
         const questions = preGeneratedQuestions?.length > 0
           ? preGeneratedQuestions
-          : await generateQuestions(role, techStack, difficulty, interviewType);
+          : await generateQuestions(role, techStack, difficulty, interviewType, 5, language);
         template = await InterviewTemplate.create({
           role: role.trim(),
           techStack,
           difficulty,
+          language, // 🌍 Save language in cache
           questions,
         });
       } catch (err) {
@@ -73,6 +77,7 @@ export const createInterviewSession = async (req, res, next) => {
       role: template.role,
       difficulty: template.difficulty,
       techStack: template.techStack,
+      language: template.language || language, // 🌍 Persist language
       questions: template.questions,
     });
 
@@ -107,7 +112,7 @@ export const submitInterviewSession = async (req, res, next) => {
     const answerList = answers.map(a => a.answer || a.content || "");
 
     try {
-      const evaluation = await evaluateInterview(session.role, questionList, answerList);
+      const evaluation = await evaluateInterview(session.role, questionList, answerList, session.language || "English");
 
       session.answers = answers;
       session.score = evaluation.score;

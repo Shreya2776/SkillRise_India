@@ -55,17 +55,18 @@ export const generateVapiToken = async (req, res, next) => {
  */
 export const generateQuestions = async (req, res, next) => {
   try {
-    const { role, level, techstack, type = "technical", amount = 10 } = req.body;
+    const { role, level, techstack, type = "technical", language = "English", amount = 10 } = req.body;
 
     // Normalize caching key
     const techString = (Array.isArray(techstack) ? techstack.sort().join(", ") : techstack) || "General";
-    const cacheKey = `[${role}]-[${level}]-[${techString}]`.toLowerCase();
+    const cacheKey = `[${role}]-[${level}]-[${techString}]-[${language}]`.toLowerCase();
 
     // 1. Check template cache (role, level, techstack)
     let template = await InterviewTemplate.findOne({
       role: role.trim(),
       difficulty: level,
       techStack: techString,
+      language, // 🌍 Cache by language
     });
 
     if (template) {
@@ -78,7 +79,7 @@ export const generateQuestions = async (req, res, next) => {
     console.log(`🧠 [AI PROMPT] role=${role}, skills=${techString}, level=${level}, type=${type}, count=${amount}`);
 
     try {
-      const questions = await callAiToGenerate(role, techString, level, type, amount);
+      const questions = await callAiToGenerate(role, techString, level, type, amount, language);
 
       console.log(`✅ [AI BRAIN] Success! Generated ${questions.length} questions.`);
 
@@ -87,6 +88,7 @@ export const generateQuestions = async (req, res, next) => {
         role: role.trim(),
         difficulty: level,
         techStack: techString,
+        language, // 🌍 Persist language in cache
         questions,
       });
 
