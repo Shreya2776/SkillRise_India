@@ -1,67 +1,35 @@
-// import User from "../models/user.js";
+// controllers/profileController.js
 
-// export const createProfile = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
+import Student from "../models/Student.js";
+import Professional from "../models/Professional.js";
+import Worker from "../models/Worker.js";
 
-//     const {
-//       userType,
-//       name,
-//       location,
-//       phone,
-//       ...profileData
-//     } = req.body;
-
-//     const updatedUser = await User.findByIdAndUpdate(
-//       userId,
-//       {
-//         userType,
-//         name,
-//         location,
-//         phone,
-//         profile: profileData,
-//       },
-//       { new: true }
-//     );
-
-//     res.json(updatedUser);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-import User from "../models/user.js";
-
-export const createProfile = async (req, res) => {
+export const saveProfile = async (req, res) => {
   try {
-    console.log("BODY:", req.body);
-    console.log("USER:", req.user);
+    const userId = req.user.id; // from auth middleware
+    const { role, data } = req.body;
 
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        message: "User not authenticated",
-      });
+    let profile;
+
+    if (role === "student") {
+      profile = await Student.create({ ...data, user: userId });
     }
 
-    const userId = req.user.id;
+    else if (role === "professional") {
+      profile = await Professional.create({ ...data, user: userId });
+    }
 
-    const { userType, ...profileData } = req.body;
+    else if (role === "worker") {
+      profile = await Worker.create({ ...data, user: userId });
+    }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        userType,
-        profile: profileData,
-      },
-      {
-        returnDocument: "after", // ✅ FIXED warning
-      }
-    );
+    return res.status(201).json({
+      success: true,
+      message: "Profile saved",
+      profile,
+    });
 
-    res.json(updatedUser);
-
-  } catch (err) {
-    console.error("ERROR:", err);
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
