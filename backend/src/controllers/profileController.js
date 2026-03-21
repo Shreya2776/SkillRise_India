@@ -4,56 +4,60 @@ import Student from "../models/Student.js";
 import Professional from "../models/Professional.js";
 import Worker from "../models/Worker.js";
 import mongoose from "mongoose";
+import Profile from "../models/Profile.js";
 export const saveProfile = async (req, res) => {
   try {
-    const userId = req.user.id; // from auth middleware
     const { role, data } = req.body;
-    console.log("REQ BODY:", req.body);
-    let profile;
 
-    if (role === "student") {
-      profile = await Student.create({ ...data, user: userId });
+    let profile = await Profile.findOne({ user: req.user });
+
+    if (profile) {
+      // 🔥 UPDATE
+      profile.role = role;
+      profile.data = data;
+      await profile.save();
+    } else {
+      // 🔥 CREATE
+      profile = new Profile({
+        user: req.user,
+        role,
+        data,
+      });
+      await profile.save();
     }
 
-    else if (role === "professional") {
-      profile = await Professional.create({ ...data, user: userId });
-    }
+    res.json({ profile });
 
-    else if (role === "worker") {
-      profile = await Worker.create({ ...data, user: userId });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Profile saved",
-      profile,
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
   }
 };
 
-// export const getMyProfile = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
+export const getMyProfile = async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.user });
+    console.log("USER ID:", req.user);
+    console.log("PROFILE:", profile);
+    if (!profile) {
+      const newProfile = new Profile({
+        user: req.user,
+        role: "",
+        data: {},
+  });
 
-//     let profile =
-//       (await Student.findOne({ user: userId })) ||
-//       (await Professional.findOne({ user: userId })) ||
-//       (await Worker.findOne({ user: userId }));
+  await newProfile.save();
 
-//     if (!profile) {
-//       return res.status(200).json({ profile: null });
-//     }
+  return res.json({ profile: newProfile });
+    }
 
-//     res.status(200).json({ profile });
+    res.json({ profile });
 
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ message: "Server Error" });
-//   }
-// };
+  } catch (err) {
+    console.error("ERROR:", err); 
+    res.status(500).json({ msg: "Server error" });
+  }
+};
 
 mongoose.connection.on("connected", () => {
   console.log("MongoDB Connected:", mongoose.connection.name);

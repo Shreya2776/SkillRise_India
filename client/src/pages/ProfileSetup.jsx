@@ -17,58 +17,79 @@ export default function ProfileSetup() {
   const handleChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
   };
-
-    // 🔥 FETCH DATA
-  // useEffect(() => {
-  //   const fetchProfile = async () => {
-  //     try {
-  //       const token = localStorage.getItem("token");
-
-  //       const res = await fetch("http://localhost:5000/api/profile/me", {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       });
-
-  //       const data = await res.json();
-
-  //       if (data?.profile) {
-  //         setFormData(data.profile);
-  //         setIsEdit(false);
-  //       } else {
-  //         setIsEdit(true);
-  //       }
-  //     } catch (err) {
-  //       console.log(err);
-  //     }
-  //   };
-
-  //   fetchProfile();
-  // }, []);
-
-  const handleSubmit = async () => {
+ const fetchProfile = async () => {
   try {
     const token = localStorage.getItem("token");
+    console.log("TOKEN:", token);
+    const res = await fetch("http://localhost:5000/api/profile/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-      await fetch("http://localhost:5000/api/profile/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          role:
-            index === 0
-              ? "student"
-              : index === 1
-              ? "professional"
-              : "worker",
-          data: formData,
-        }),
-      });
+    if (!res.ok) {
+      setIsEdit(true);
+      return;
+    }
 
-      alert("Profile Saved ✅");
+    const data = await res.json();
+
+    if (data?.profile) {
+      setFormData(data.profile.data);
       setIsEdit(false);
+    } else {
+      setIsEdit(true);
+    }
+  } catch (err) {
+    console.log(err);
+    setIsEdit(true);
+  }
+};
+useEffect(() => {
+  const local = localStorage.getItem("profile");
+
+  if (local) {
+    setFormData(JSON.parse(local));
+    setIsEdit(false);
+  }
+
+  // then try backend
+  fetchProfile();
+}, []);
+
+const handleSubmit = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    console.log("TOKEN:", token);
+    const res = await fetch("http://localhost:5000/api/profile/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        role:
+          index === 0
+            ? "student"
+            : index === 1
+            ? "professional"
+            : "worker",
+        data: formData,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Save failed ❌");
+      return;
+    }
+
+    // ✅ IMPORTANT: update state with saved data
+    setFormData(data.profile.data || formData);
+
+    alert("Profile Saved ✅");
+    setIsEdit(false);
 
   } catch (err) {
     console.log(err);
@@ -124,6 +145,20 @@ export default function ProfileSetup() {
   //     onChange(address);
   //   }
   // };
+
+  const handleFileUpload = (e) => {
+  const file = e.target.files[0];
+
+  if (!file) return;
+
+  // optional: store file or name
+  setFormData((prev) => ({
+    ...prev,
+    resume: file,
+  }));
+
+  console.log("Uploaded:", file);
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-[#0f0f1a] to-black text-white">
