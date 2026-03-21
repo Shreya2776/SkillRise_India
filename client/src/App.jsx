@@ -25,6 +25,15 @@ import ResetPassword from "./pages/ResetPassword";
 import ProfileSetup from "./pages/ProfileSetup";
 import ProfileDashboard from "./pages/ProfileDashboard";
 import Layout from "./components/Layout.jsx";
+// New Mock Imports
+import { AuthProvider as MockAuthProvider } from "./new-mock/context/AuthContext";
+import { ToastProvider as MockToastProvider } from "./new-mock/components/ui/Toast";
+import NewInterviewPage from "./new-mock/pages/NewInterviewPage";
+import InterviewsPage from "./new-mock/pages/InterviewsPage";
+import InterviewDetailPage from "./new-mock/pages/InterviewDetailPage";
+import FeedbackPage from "./new-mock/pages/FeedbackPage";
+
+
 function App() {
 
   return (
@@ -67,8 +76,49 @@ function App() {
             <Route path="/schemes" element={<GovernmentSchemes />} />
             <Route path="/progress" element={<SkillProgress />} />
             <Route path="/feedback" element={<Feedback />} />
-            <Route path="/mock-interview" element={<InterviewPage />} />
+            <Route path="/new_mock" element={<InterviewPage />} />
             <Route path="/chatbot" element={<Chatbot />} />
+
+            <Route
+              path="/interviews"
+              element={
+                <MockAuthProvider>
+                  <MockToastProvider>
+                    <InterviewsPage />
+                  </MockToastProvider>
+                </MockAuthProvider>
+              }
+            />
+            <Route
+              path="/interviews/new"
+              element={
+                <MockAuthProvider>
+                  <MockToastProvider>
+                    <NewInterviewPage />
+                  </MockToastProvider>
+                </MockAuthProvider>
+              }
+            />
+            <Route
+              path="/interviews/:id"
+              element={
+                <MockAuthProvider>
+                  <MockToastProvider>
+                    <InterviewDetailPage />
+                  </MockToastProvider>
+                </MockAuthProvider>
+              }
+            />
+            <Route
+              path="/interviews/:id/feedback"
+              element={
+                <MockAuthProvider>
+                  <MockToastProvider>
+                    <FeedbackPage />
+                  </MockToastProvider>
+                </MockAuthProvider>
+              }
+            />
           </Route>
         </Route>
 
