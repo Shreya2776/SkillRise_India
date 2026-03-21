@@ -16,7 +16,7 @@ const studentSchema = new mongoose.Schema({
   year: String,
   interests: String,
   careerGoal: String,
-
+  resumeUrl: String,
 }, { timestamps: true });
 
 export default mongoose.model("Student", studentSchema);

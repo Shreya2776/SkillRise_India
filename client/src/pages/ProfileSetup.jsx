@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { useSwipeable } from "react-swipeable";
 import {
   User,
@@ -8,32 +9,66 @@ import {
   GraduationCap,
   Target,
 } from "lucide-react";
-
+import { LoadScript, Autocomplete } from "@react-google-maps/api";
 export default function ProfileSetup() {
   const [index, setIndex] = useState(0);
   const [formData, setFormData] = useState({});
-
+  const [isEdit, setIsEdit] = useState(true);
   const handleChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
   };
+
+    // 🔥 FETCH DATA
+  // useEffect(() => {
+  //   const fetchProfile = async () => {
+  //     try {
+  //       const token = localStorage.getItem("token");
+
+  //       const res = await fetch("http://localhost:5000/api/profile/me", {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       });
+
+  //       const data = await res.json();
+
+  //       if (data?.profile) {
+  //         setFormData(data.profile);
+  //         setIsEdit(false);
+  //       } else {
+  //         setIsEdit(true);
+  //       }
+  //     } catch (err) {
+  //       console.log(err);
+  //     }
+  //   };
+
+  //   fetchProfile();
+  // }, []);
 
   const handleSubmit = async () => {
   try {
     const token = localStorage.getItem("token");
 
-    await fetch("http://localhost:5000/api/profile/save", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        role: index === 0 ? "student" : index === 1 ? "professional" : "worker",
-        data: formData,
-      }),
-    });
+      await fetch("http://localhost:5000/api/profile/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          role:
+            index === 0
+              ? "student"
+              : index === 1
+              ? "professional"
+              : "worker",
+          data: formData,
+        }),
+      });
 
-    alert("Profile Saved ✅");
+      alert("Profile Saved ✅");
+      setIsEdit(false);
 
   } catch (err) {
     console.log(err);
@@ -45,6 +80,50 @@ export default function ProfileSetup() {
     onSwipedRight: () => index > 0 && setIndex(index - 1),
     trackMouse: true,
   });
+
+  if (!isEdit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-[#0f0f1a] to-black text-white">
+
+        <div className="w-[800px] p-6 rounded-3xl bg-white/5 border border-white/10">
+
+          <h2 className="text-2xl font-bold mb-6">Your Profile</h2>
+
+          <div className="grid grid-cols-2 gap-4">
+
+            {Object.entries(formData).map(([key, value]) => (
+              <div key={key} className="bg-white/5 p-3 rounded-xl">
+                <p className="text-gray-400 text-xs">{key}</p>
+                <p>{value || "-"}</p>
+              </div>
+            ))}
+
+          </div>
+
+          <button
+            onClick={() => setIsEdit(true)}
+            className="mt-6 w-full bg-yellow-500 py-3 rounded-xl"
+          >
+            Edit Profile
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+  // function LocationInput({ value, onChange }) {
+  // const [autocomplete, setAutocomplete] = useState(null);
+
+  // const onLoad = (autoC) => setAutocomplete(autoC);
+
+  // const onPlaceChanged = () => {
+  //   if (autocomplete) {
+  //     const place = autocomplete.getPlace();
+  //     const address = place.formatted_address;
+  //     onChange(address);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-[#0f0f1a] to-black text-white">
@@ -80,61 +159,88 @@ export default function ProfileSetup() {
 
           {/* STUDENT */}
           <FormWrapper title="Student Profile" onSubmit={handleSubmit}>
-            <Full><Input icon={<User />} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
+            <Full><Input icon={<User />} value={formData.name} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
 
-            <Input icon={<Phone />} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
-            <Input icon={<MapPin />} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
+            <Input icon={<Phone />} value={formData.phone} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
+            <Input icon={<MapPin />} value={formData.location} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
 
-            <Full><Input icon={<GraduationCap />} placeholder="College" onChange={(e)=>handleChange("college",e.target.value)} /></Full>
+            <Full><Input icon={<GraduationCap />} value={formData.college} placeholder="College" onChange={(e)=>handleChange("college",e.target.value)} /></Full>
 
-            <Input icon={<BookOpen />} placeholder="Degree" onChange={(e)=>handleChange("degree",e.target.value)} />
+            <Input icon={<BookOpen />} value={formData.degree} placeholder="Degree" onChange={(e)=>handleChange("degree",e.target.value)} />
 
             <Select options={["Year","1st","2nd","3rd","4th"]} onChange={(v)=>handleChange("year",v)} />
 
-            <Full><Input icon={<Target />} placeholder="Interests" onChange={(e)=>handleChange("interests",e.target.value)} /></Full>
-            <Full><Input icon={<Target />} placeholder="Career Goal" onChange={(e)=>handleChange("goal",e.target.value)} /></Full>
+            <Full><Input icon={<Target />} value={formData.interests} placeholder="Interests" onChange={(e)=>handleChange("interests",e.target.value)} /></Full>
+            <Full><Input icon={<Target />} value={formData.goal} placeholder="Career Goal" onChange={(e)=>handleChange("goal",e.target.value)} /></Full>
+
+            <Full>
+              <label className="text-sm text-gray-400 mb-1">Upload Resume </label>
+              
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="w-full p-3 rounded-xl bg-[#0f172a] border border-gray-700 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                onChange={(e) => handleFileUpload(e)}
+              />
+            </Full>
+
           </FormWrapper>
+
+          
+
 
           {/* PROFESSIONAL */}
           <FormWrapper title="Professional Profile" onSubmit={handleSubmit}>
-            <Full><Input icon={<User />} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
+            <Full><Input icon={<User />} value={formData.name} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
 
-            <Input icon={<Phone />} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
-            <Input icon={<MapPin />} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
+            <Input icon={<Phone />} value={formData.phone} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
+            <Input icon={<MapPin />} value={formData.location} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
 
-            <Full><Input icon={<BookOpen />} placeholder="Language" onChange={(e)=>handleChange("lang",e.target.value)} /></Full>
+            <Full><Input icon={<BookOpen />} value={formData.lang} placeholder="Language" onChange={(e)=>handleChange("lang",e.target.value)} /></Full>
 
-            <Input icon={<BookOpen />} placeholder="Role" onChange={(e)=>handleChange("role",e.target.value)} />
-            <Input icon={<Target />} placeholder="Experience" onChange={(e)=>handleChange("exp",e.target.value)} />
+            <Input icon={<BookOpen />} value={formData.role} placeholder="Role" onChange={(e)=>handleChange("role",e.target.value)} />
+            <Input icon={<Target />} value={formData.exp} placeholder="Experience" onChange={(e)=>handleChange("exp",e.target.value)} />
 
-            <Full><Input icon={<BookOpen />} placeholder="Company" onChange={(e)=>handleChange("company",e.target.value)} /></Full>
+            <Full><Input icon={<BookOpen />} value={formData.company} placeholder="Company" onChange={(e)=>handleChange("company",e.target.value)} /></Full>
 
-            <Full><Input icon={<Target />} placeholder="Skills" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
+            <Full><Input icon={<Target />} value={formData.skills} placeholder="Skills" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
 
-            <Input icon={<Target />} placeholder="Salary" onChange={(e)=>handleChange("salary",e.target.value)} />
+            <Input icon={<Target />} value={formData.salary} placeholder="Salary" onChange={(e)=>handleChange("salary",e.target.value)} />
 
             <Select options={["Career Goal","Switch","Growth"]} onChange={(v)=>handleChange("goal",v)} />
+
+            <Full>
+              <label className="text-sm text-gray-400 mb-1">Upload Resume (Optional)</label>
+              
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="w-full p-3 rounded-xl bg-[#0f172a] border border-gray-700 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                onChange={(e) => handleFileUpload(e)}
+              />
+            </Full>
+
           </FormWrapper>
 
           {/* WORKER */}
           <FormWrapper title="Worker Profile" onSubmit={handleSubmit}>
-            <Full><Input icon={<User />} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
+            <Full><Input icon={<User />} value={formData.name} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
 
-            <Input icon={<Phone />} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
-            <Input icon={<MapPin />} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
+            <Input icon={<Phone />} value={formData.phone} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
+            <Input icon={<MapPin />} value={formData.location} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
 
-            <Full><Input icon={<BookOpen />} placeholder="Language" onChange={(e)=>handleChange("lang",e.target.value)} /></Full>
+            <Full><Input icon={<BookOpen />} value={formData.lang} placeholder="Language" onChange={(e)=>handleChange("lang",e.target.value)} /></Full>
 
-            <Select options={["Skill Type","Electrician","Driver","Plumber"]} onChange={(v)=>handleChange("skill",v)} />
-            <Select options={["Experience","Beginner","Intermediate","Expert"]} onChange={(v)=>handleChange("exp",v)} />
+            <Select value={formData.skill}  options={["Skill Type","Electrician","Driver","Plumber"]} onChange={(v)=>handleChange("skill",v)} />
+            <Select  value={formData.exp} options={["Experience","Beginner","Intermediate","Expert"]} onChange={(v)=>handleChange("exp",v)} />
 
-            <Full><Input icon={<Target />} placeholder="Skills" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
+            <Full><Input icon={<Target />} value={formData.skills} placeholder="Skills" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
 
-            <Input icon={<BookOpen />} placeholder="Tools" onChange={(e)=>handleChange("tools",e.target.value)} />
+            <Input icon={<BookOpen />} value={formData.tools} placeholder="Tools" onChange={(e)=>handleChange("tools",e.target.value)} />
 
-            <Select options={["Work Type","Daily","Contract","Full-time"]} onChange={(v)=>handleChange("work",v)} />
+            <Select value={formData.work} options={["Work Type","Daily","Contract","Full-time"]} onChange={(v)=>handleChange("work",v)} />
 
-            <Full><Input icon={<MapPin />} placeholder="Work Radius" onChange={(e)=>handleChange("radius",e.target.value)} /></Full>
+            <Full><Input icon={<MapPin />} value={formData.radius} placeholder="Work Radius" onChange={(e)=>handleChange("radius",e.target.value)} /></Full>
 
             <Full><input type="file" className="input" /></Full>
           </FormWrapper>
@@ -227,3 +333,4 @@ function Select({ options, onChange }) {
     </div>
   );
 }
+

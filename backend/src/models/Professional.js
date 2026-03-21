@@ -18,7 +18,7 @@ const professionalSchema = new mongoose.Schema({
   skills: String,
   salary: String,
   careerGoal: String,
-
+  resumeUrl: String,
 }, { timestamps: true });
 
 export default mongoose.model("Professional", professionalSchema);

@@ -1,5 +1,5 @@
 // middleware/authMiddleware.js
-
+// used for profile
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 
