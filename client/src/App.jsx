@@ -3,7 +3,7 @@ import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Profile from "./pages/Profile.jsx";
+import Profile from "./pages/ProfileSetup.jsx";
 import AICareerAssistant from "./pages/AICareerAssistant.jsx";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer.jsx";
 import SkillGapAnalysis from "./pages/SkillGapAnalysis.jsx";
@@ -22,6 +22,9 @@ import ProtectedRoute from "./components/common/ProtectedRoute.jsx";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+import ProfileSetup from "./pages/ProfileSetup";
+import ProfileDashboard from "./pages/ProfileDashboard";
+import Layout from "./components/Layout.jsx";
 // New Mock Imports
 import { AuthProvider as MockAuthProvider } from "./new-mock/context/AuthContext";
 import { ToastProvider as MockToastProvider } from "./new-mock/components/ui/Toast";
@@ -44,7 +47,22 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
+        <Route
+  path="/profile"
+  element={
+    <Layout>
+      <ProfileSetup />
+    </Layout>
+  }
+/>
+        <Route
+  path="/profile/dashboard"
+  element={
+    <Layout>
+      <ProfileDashboard />
+    </Layout>
+  }
+/>
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
