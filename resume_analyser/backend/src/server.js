@@ -27,12 +27,12 @@ mongoose.connect(process.env.MONGO_URI)
 
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT,()=>{
-    console.log(`AI Resume Analyzer running on ${PORT}`);
-});
-
 app.get("/", (req,res)=>{
  res.send("Backend running");
+});
+
+app.listen(PORT,()=>{
+    console.log(`AI Resume Analyzer running on ${PORT}`);
 });
 
 console.log("GEMINI KEY:", process.env.GEMINI_API_KEY?.slice(0,10));
