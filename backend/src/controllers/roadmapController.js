@@ -1,7 +1,28 @@
 import { buildRoadmapPrompt, buildUpdatePrompt, buildCareerSwitchPrompt } from "../services/promptBuilder.js";
 import { generateRoadmapFromAI } from "../services/aiService.js";
 import { formatRoadmap } from "../services/roadmapFormatter.js";
-import { parseResume } from "../../../resume_analyser/backend/src/services/resumeParser.js";
+// import { parseResume } from "../../../resume_analyser/backend/src/services/resumeParser.js";
+
+import fetch from "node-fetch";
+import FormData from "form-data";
+
+
+const callResumeAnalyzer = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file.buffer, file.originalname);
+
+  const response = await fetch("https://skillrise-india-2.onrender.com/api/analyzer", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Resume analyzer API failed");
+  }
+
+  const data = await response.json();
+  return data.text || data; // depends on your API response
+};
 
 export const generateRoadmap = async (req, res) => {
   console.log("📥 Received roadmap request");
@@ -69,7 +90,7 @@ export const updateRoadmap = async (req, res) => {
     }
 
     console.log("📄 Parsing resume PDF...");
-    const resumeText = await parseResume(req.file);
+    const resumeText = await callResumeAnalyzer(req.file);
 
     console.log("🔨 Building update prompt...");
     const prompt = buildUpdatePrompt({
@@ -114,7 +135,7 @@ export const careerSwitchRoadmap = async (req, res) => {
     }
 
     console.log("📄 Parsing resume PDF...");
-    const resumeText = await parseResume(req.file);
+    const resumeText = await callResumeAnalyzer(req.file);
 
     console.log("🔨 Building career switch prompt...");
     const prompt = buildCareerSwitchPrompt({
