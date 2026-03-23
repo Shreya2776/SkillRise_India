@@ -1,35 +1,32 @@
 import mongoose from "mongoose";
 
-const blogSchema = new mongoose.Schema(
+const opportunitySchema = new mongoose.Schema(
   {
     title: {
       type: String,
       required: [true, "Title is required"],
-      trim: true,
     },
     description: {
       type: String,
       required: [true, "Description is required"],
     },
+    type: {
+      type: String,
+      enum: ["course", "job", "training", "camp"],
+      required: [true, "Type is required"],
+    },
     skills: {
       type: [String],
-      required: [true, "At least one skill is required"],
-    },
-    location: {
-      type: String,
-    },
-    region: {
-      type: String,
-      default: "India",
+      default: [],
     },
     tags: {
       type: [String],
       default: [],
     },
-    likes: {
-      type: Number,
-      default: 0,
-    },
+    location: String,
+    deadline: Date,
+    contactInfo: String,
+    applyLink: String,
     views: {
       type: Number,
       default: 0,
@@ -43,4 +40,4 @@ const blogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Blog", blogSchema);
+export default mongoose.model("Opportunity", opportunitySchema);
