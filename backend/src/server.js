@@ -136,9 +136,6 @@ app.use("/api/blogs", blogRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Test route
-app.get("/", (req, res) => {
-  res.send("API Running");
-});
 
 // Socket connection
 io.on("connection", (socket) => {
