@@ -81,11 +81,15 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
+import passport from "passport";
+import "./config/Passport.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import roadmapRoutes from "./routes/roadmap.js";
 import authRoutes from "./routes/authRoutes.js";
 import blogRoutes from "./routes/blog.routes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import programRoutes from "./routes/program.routes.js";
+import opportunityRoutes from "./routes/opportunity.routes.js";
 
 // ✅ STEP 1: create app FIRST
 const app = express();
@@ -104,6 +108,7 @@ const io = new Server(httpServer, {
 // Middleware
 app.use(express.json());
 app.use(cors());
+app.use(passport.initialize());
 
 // Routes
 app.use("/api/roadmap", roadmapRoutes);
@@ -130,6 +135,15 @@ io.on("connection", (socket) => {
 export const broadcastStatsUpdate = () => {
   io.emit("stats-update");
 };
+
+app.use("/api/programs", programRoutes);
+app.use("/api/opportunities", opportunityRoutes);
+app.use("/api/opportunity", opportunityRoutes); // Alias for POST convenience requested
+
+// Test route
+app.get("/", (req, res) => {
+  res.send("SkillRise API Running");
+});
 
 // MongoDB Connection
 mongoose
