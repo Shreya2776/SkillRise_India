@@ -1,8 +1,9 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
   ArrowLeft,
+  LogOut,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -11,6 +12,14 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    navigate("/login");
+  };
+
   return (
     <aside className="w-64 shrink-0 h-screen sticky top-0 bg-[#08080e] border-r border-white/[0.06] flex flex-col">
       {/* Logo */}
@@ -47,8 +56,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Back to main app */}
-      <div className="p-4 border-t border-white/[0.06]">
+      {/* Bottom Section */}
+      <div className="p-4 border-t border-white/[0.06] space-y-2">
         <NavLink
           to="/dashboard"
           className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-all"
@@ -56,6 +65,14 @@ export default function Sidebar() {
           <ArrowLeft className="w-5 h-5" />
           Back to App
         </NavLink>
+        
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-red-400/50 hover:text-red-400 hover:bg-red-400/5 transition-all"
+        >
+          <LogOut className="w-5 h-5" />
+          Sign Out
+        </button>
       </div>
     </aside>
   );

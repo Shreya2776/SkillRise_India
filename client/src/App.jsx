@@ -69,7 +69,7 @@ function App() {
     </Layout>
   }
 />
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={["user", "admin", "ngo"]} />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
@@ -129,12 +129,17 @@ function App() {
         </Route>
 
         {/* Admin Dashboard Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="ngo-register" element={<NgoRegister />} />
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="ngo-register" element={<NgoRegister />} />
+          </Route>
         </Route>
 
-        <Route path="/ngo" element={<NgoDashboard />} />
+        {/* NGO Dashboard Routes */}
+        <Route element={<ProtectedRoute allowedRoles={["ngo"]} />}>
+          <Route path="/ngo" element={<NgoDashboard />} />
+        </Route>
 
       </Routes>
 
