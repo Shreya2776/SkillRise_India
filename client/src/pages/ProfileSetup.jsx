@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState  } from "react";
 import { useEffect } from "react";
 import { useSwipeable } from "react-swipeable";
 import {
@@ -28,6 +28,13 @@ export default function ProfileSetup() {
   try {
     const token = localStorage.getItem("token");
     console.log("TOKEN:", token);
+
+    if (!token) {
+        setIsEdit(true);
+        //setLoading(false);
+        return;
+      }
+
     const res = await fetch("http://localhost:8000/api/profile/me", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -42,9 +49,10 @@ export default function ProfileSetup() {
     const data = await res.json();
 
     if (data?.profile) {
-      setFormData(data.profile.data);
+      setFormData(data?.profile?.data || {});
       setIsEdit(false);
     } else {
+      
       setIsEdit(true);
     }
   } catch (err) {
@@ -155,7 +163,7 @@ const handleSubmit = async () => {
 
           <div className="grid grid-cols-2 gap-4">
 
-            {Object.entries(formData).map(([key, value]) => (
+            {Object.entries(formData || {}).map(([key, value]) => (
               <div key={key} className="bg-white/5 p-3 rounded-xl">
                 <p className="text-gray-400 text-xs">{key}</p>
                 <p>{value || "-"}</p>
@@ -395,10 +403,11 @@ function Input({ icon, value, placeholder, onChange }) {
 }
 
 /* 🔥 CUSTOM SELECT */
-function Select({ options, onChange }) {
+function Select({ options,value, onChange }) {
   return (
     <div className="relative">
       <select
+        value={value  || ""}
         onChange={(e)=>onChange(e.target.value)}
         className="input appearance-none pr-8"
       >
