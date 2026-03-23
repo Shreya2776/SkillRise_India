@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState  } from "react";
 import { useEffect } from "react";
 import { useSwipeable } from "react-swipeable";
 import {
@@ -21,7 +21,14 @@ export default function ProfileSetup() {
   try {
     const token = localStorage.getItem("token");
     console.log("TOKEN:", token);
-    const res = await fetch("http://localhost:5050/api/profile/me", {
+
+    if (!token) {
+        setIsEdit(true);
+        //setLoading(false);
+        return;
+      }
+
+    const res = await fetch("http://localhost:8000/api/profile/me", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -35,9 +42,10 @@ export default function ProfileSetup() {
     const data = await res.json();
 
     if (data?.profile) {
-      setFormData(data.profile.data);
+      setFormData(data?.profile?.data || {});
       setIsEdit(false);
     } else {
+      
       setIsEdit(true);
     }
   } catch (err) {
@@ -61,7 +69,7 @@ const handleSubmit = async () => {
   try {
     const token = localStorage.getItem("token");
     console.log("TOKEN:", token);
-    const res = await fetch("http://localhost:5050/api/profile/save", {
+    const res = await fetch("http://localhost:8000/api/profile/save", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -112,7 +120,7 @@ const handleSubmit = async () => {
 
           <div className="grid grid-cols-2 gap-4">
 
-            {Object.entries(formData).map(([key, value]) => (
+            {Object.entries(formData || {}).map(([key, value]) => (
               <div key={key} className="bg-white/5 p-3 rounded-xl">
                 <p className="text-gray-400 text-xs">{key}</p>
                 <p>{value || "-"}</p>
@@ -335,12 +343,13 @@ function Full({ children }) {
   return <div className="col-span-2">{children}</div>;
 }
 
-function Input({ icon, placeholder, onChange }) {
+function Input({ icon, placeholder,value, onChange }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
       <div className="text-gray-400">{icon}</div>
       <input
         type="text"
+        value={value || ""}
         placeholder={placeholder}
         onChange={onChange}
         className="bg-transparent outline-none w-full text-white placeholder-gray-400 text-sm"
@@ -350,10 +359,11 @@ function Input({ icon, placeholder, onChange }) {
 }
 
 /* 🔥 CUSTOM SELECT */
-function Select({ options, onChange }) {
+function Select({ options,value, onChange }) {
   return (
     <div className="relative">
       <select
+        value={value  || ""}
         onChange={(e)=>onChange(e.target.value)}
         className="input appearance-none pr-8"
       >
