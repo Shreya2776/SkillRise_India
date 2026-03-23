@@ -5,6 +5,7 @@ import cors from "cors";
 import profileRoutes from "./routes/profileRoutes.js";
 import roadmapRoutes from "./routes/roadmap.js";
 import authRoutes from "./routes/authRoutes.js";
+import blogRoutes from "./routes/blog.routes.js";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/blogs", blogRoutes);
 
 // Test route
 app.get("/", (req, res) => {

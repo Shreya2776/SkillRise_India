@@ -36,6 +36,12 @@ import InterviewsPage from "./new-mock/pages/InterviewsPage";
 import InterviewDetailPage from "./new-mock/pages/InterviewDetailPage";
 import FeedbackPage from "./new-mock/pages/FeedbackPage";
 
+// Admin Dashboard Imports
+import AdminLayout from "./admin/AdminLayout";
+import AdminDashboard from "./admin/pages/Dashboard";
+import NgoRegister from "./admin/pages/NgoRegister";
+import NgoDashboard from "./ngo/pages/NgoDashboard";
+
 
 function App() {
 
@@ -66,7 +72,7 @@ function App() {
     </Layout>
   }
 />
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={["user", "admin", "ngo"]} />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
@@ -123,6 +129,19 @@ function App() {
               }
             />
           </Route>
+        </Route>
+
+        {/* Admin Dashboard Routes */}
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="ngo-register" element={<NgoRegister />} />
+          </Route>
+        </Route>
+
+        {/* NGO Dashboard Routes */}
+        <Route element={<ProtectedRoute allowedRoles={["ngo"]} />}>
+          <Route path="/ngo" element={<NgoDashboard />} />
         </Route>
 
       </Routes>
