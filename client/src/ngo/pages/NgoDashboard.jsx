@@ -4,26 +4,31 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, BookOpen, LayoutGrid, Search,
-  AlertCircle, Loader2, CalendarCheck, LogOut
+  AlertCircle, Loader2, CalendarCheck, LogOut, Briefcase
 } from "lucide-react";
 
 import BlogForm from "../components/BlogForm";
 import BlogCard from "../components/BlogCard";
 import ProgramForm from "../components/ProgramForm";
 import ProgramCard from "../components/ProgramCard";
+import OpportunityForm from "../components/OpportunityForm";
+import OpportunityCard from "../../components/OpportunityCard";
 // Base API configuration
 const BASE_API = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/auth").replace("/api/auth", "/api");
 const BLOG_URL = `${BASE_API}/blogs`;
 const PROGRAM_URL = `${BASE_API}/programs`;
+const OPPORTUNITY_URL = `${BASE_API}/opportunities`;
 
 const NAV_TABS = [
   { id: "blogs",     label: "Blog Posts",        icon: BookOpen },
   { id: "programs",  label: "Programs",          icon: CalendarCheck },
+  { id: "opportunities", label: "Opportunities", icon: Briefcase },
 ];
 
 export default function NgoDashboard() {
   const [blogs, setBlogs]             = useState([]);
   const [programs, setPrograms]       = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [editingBlog, setEditingBlog] = useState(null);
@@ -56,9 +61,19 @@ export default function NgoDashboard() {
     }
   };
 
+  const fetchMyOpportunities = async () => {
+    try {
+      const res = await axios.get(`${OPPORTUNITY_URL}/my`, axiosConfig);
+      setOpportunities(res.data.opportunities || []);
+    } catch (err) {
+      console.error("Failed to fetch opportunities:", err);
+    }
+  };
+
   useEffect(() => {
     fetchMyBlogs();
     fetchMyPrograms();
+    fetchMyOpportunities();
   }, []);
 
   const handleCreateOrUpdateBlog = async (data, id) => {
@@ -99,6 +114,22 @@ export default function NgoDashboard() {
     }
   };
 
+  const handleCreateOpportunity = async (data) => {
+    const res = await axios.post(OPPORTUNITY_URL, data, axiosConfig);
+    setOpportunities([res.data.opportunity, ...opportunities]);
+  };
+
+  const handleDeleteOpportunity = async (id) => {
+    if (window.confirm("Are you sure you want to delete this opportunity?")) {
+      try {
+        await axios.delete(`${OPPORTUNITY_URL}/${id}`, axiosConfig);
+        setOpportunities(opportunities.filter(o => o._id !== id));
+      } catch {
+        alert("Delete failed.");
+      }
+    }
+  };
+
   const filteredBlogs = blogs.filter(b =>
     b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     b.skills.some(sk => sk.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -107,6 +138,11 @@ export default function NgoDashboard() {
   const filteredPrograms = programs.filter(p =>
     p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (p.skills || []).some(sk => sk.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const filteredOpportunities = opportunities.filter(o =>
+    o.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (o.skills || []).some(sk => sk.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleLogout = () => {
@@ -170,6 +206,13 @@ export default function NgoDashboard() {
                   <CalendarCheck size={13} className="text-emerald-400" />
                   <span className="text-xs font-bold text-white/50">
                     <span className="text-white">{programs.length}</span> Programs
+                  </span>
+                </div>
+              <div className="w-px h-4 bg-white/10" />
+                <div className="flex items-center gap-1.5">
+                  <Briefcase size={13} className="text-blue-400" />
+                  <span className="text-xs font-bold text-white/50">
+                    <span className="text-white">{opportunities.length}</span> Opps
                   </span>
                 </div>
               </motion.div>
@@ -368,6 +411,70 @@ export default function NgoDashboard() {
             </motion.div>
           )}
 
+          {/* OPPORTUNITIES TAB */}
+          {activeTab === "opportunities" && (
+            <motion.div
+              key="opportunities"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.3 }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+            >
+              <div className="lg:col-span-5">
+                <div className="sticky top-12">
+                  <OpportunityForm onSubmit={handleCreateOpportunity} />
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 space-y-8">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/[0.02] border border-white/[0.06] p-4 rounded-3xl backdrop-blur-sm">
+                  <div className="flex items-center gap-4 px-2 w-full sm:w-auto">
+                    <Search size={20} className="text-white/20 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Search opportunities..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-transparent border-none outline-none text-white text-sm font-medium placeholder-white/20 w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-xl border border-white/[0.08] text-[10px] font-black uppercase tracking-widest text-white/40 shrink-0">
+                    <Briefcase size={14} />
+                    {filteredOpportunities.length} opps
+                  </div>
+                </div>
+
+                {opportunities.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-32 rounded-3xl border border-dashed border-white/10 bg-white/[0.01]">
+                    <div className="w-20 h-20 rounded-full bg-white/[0.03] flex items-center justify-center mb-6 text-white/10">
+                      <Briefcase size={40} />
+                    </div>
+                    <h3 className="text-xl font-bold text-white/30 tracking-tight">No opportunities yet</h3>
+                    <p className="text-white/10 text-sm mt-2 max-w-xs text-center font-medium">
+                      Create your first opportunity to hire or train people
+                    </p>
+                  </div>
+                ) : (
+                  <motion.div layout className="grid grid-cols-1 gap-6">
+                    <AnimatePresence>
+                      {filteredOpportunities.map(opp => (
+                        <motion.div
+                          key={opp._id}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          layout
+                        >
+                          <OpportunityCard opportunity={opp} onDelete={handleDeleteOpportunity} showDelete={true} />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
 
         </AnimatePresence>
       </div>

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, TrendingUp, Compass, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, TrendingUp, Compass, Loader2, AlertCircle, Briefcase } from "lucide-react";
 import BlogCard from "../ngo/components/BlogCard";
+import OpportunityCard from "../components/OpportunityCard";
 
 const BASE_API = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/auth").replace("/api/auth", "/api");
 
 export default function FeedPage() {
   const [feedData, setFeedData] = useState({ personalized: [], trending: [], explore: [] });
+  const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("personalized");
@@ -18,14 +20,21 @@ export default function FeedPage() {
     const fetchFeed = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${BASE_API}/blogs/feed`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        // Run both requests in parallel
+        const headers = { Authorization: `Bearer ${token}` };
+        
+        const [blogReq, oppReq] = await Promise.all([
+           axios.get(`${BASE_API}/blogs/feed`, { headers }),
+           axios.get(`${BASE_API}/opportunities`)
+        ]);
+
         setFeedData({
-          personalized: res.data.personalized || [],
-          trending: res.data.trending || [],
-          explore: res.data.explore || []
+          personalized: blogReq.data.personalized || [],
+          trending: blogReq.data.trending || [],
+          explore: blogReq.data.explore || []
         });
+
+        setOpportunities(oppReq.data.opportunities || []);
       } catch (err) {
         console.error("Feed error:", err);
         setError("Failed to load your feed. Please try again later.");
@@ -54,6 +63,7 @@ export default function FeedPage() {
     { id: "personalized", label: "For You", icon: Sparkles },
     { id: "trending", label: "Trending", icon: TrendingUp },
     { id: "explore", label: "Explore", icon: Compass },
+    { id: "opportunities", label: "Opportunities", icon: Briefcase },
   ];
 
   const currentBlogs = feedData[activeTab] || [];
@@ -117,27 +127,51 @@ export default function FeedPage() {
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.3 }}
           >
-            {currentBlogs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 rounded-3xl border border-dashed border-white/10 bg-white/[0.01]">
-                {activeTab === "personalized" ? <Sparkles size={40} className="text-white/10 mb-4" /> :
-                 activeTab === "trending" ? <TrendingUp size={40} className="text-white/10 mb-4" /> :
-                 <Compass size={40} className="text-white/10 mb-4" />}
-                <h3 className="text-xl font-bold text-white/30">Nothing to show right now</h3>
-                <p className="text-white/10 text-sm mt-2">Check back later for new content.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentBlogs.map((blog) => (
-                  <motion.div
-                    key={blog._id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.02 }}
-                    className="cursor-pointer"
-                    onClick={() => handleBlogClick(blog)}
-                  >
-                    <BlogCard blog={blog} readOnly />
-                    {activeTab === "personalized" && blog.feedScore > 0 && (
+            {activeTab === "opportunities" ? (
+              // -- OPPORTUNITIES SECTION --
+              opportunities.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 rounded-3xl border border-dashed border-white/10 bg-white/[0.01]">
+                   <Briefcase size={40} className="text-white/10 mb-4" />
+                   <h3 className="text-xl font-bold text-white/30">No Opportunities available</h3>
+                   <p className="text-white/10 text-sm mt-2">Check back later for new listings.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {opportunities.map((opp) => (
+                    <motion.div
+                      key={opp._id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <OpportunityCard opportunity={opp} />
+                    </motion.div>
+                  ))}
+                </div>
+              )
+            ) : ( 
+              // -- BLOGS SECTION --
+              currentBlogs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 rounded-3xl border border-dashed border-white/10 bg-white/[0.01]">
+                  {activeTab === "personalized" ? <Sparkles size={40} className="text-white/10 mb-4" /> :
+                   activeTab === "trending" ? <TrendingUp size={40} className="text-white/10 mb-4" /> :
+                   <Compass size={40} className="text-white/10 mb-4" />}
+                  <h3 className="text-xl font-bold text-white/30">Nothing to show right now</h3>
+                  <p className="text-white/10 text-sm mt-2">Check back later for new content.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {currentBlogs.map((blog) => (
+                    <motion.div
+                      key={blog._id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      className="cursor-pointer"
+                      onClick={() => handleBlogClick(blog)}
+                    >
+                      <BlogCard blog={blog} readOnly />
+                      {activeTab === "personalized" && blog.feedScore > 0 && (
                       <div className="mt-2 text-[10px] text-violet-400/50 font-bold uppercase tracking-widest text-right px-2">
                         Match Score: {blog.feedScore.toFixed(1)}
                       </div>
@@ -145,7 +179,7 @@ export default function FeedPage() {
                   </motion.div>
                 ))}
               </div>
-            )}
+            ))}
           </motion.div>
         </AnimatePresence>
       )}
