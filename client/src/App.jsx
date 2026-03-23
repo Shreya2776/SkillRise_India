@@ -33,6 +33,12 @@ import InterviewsPage from "./new-mock/pages/InterviewsPage";
 import InterviewDetailPage from "./new-mock/pages/InterviewDetailPage";
 import FeedbackPage from "./new-mock/pages/FeedbackPage";
 
+// Admin Dashboard Imports
+import AdminLayout from "./admin/AdminLayout";
+import AdminDashboard from "./admin/pages/Dashboard";
+import NgoRegister from "./admin/pages/NgoRegister";
+import NgoDashboard from "./ngo/pages/NgoDashboard";
+
 
 function App() {
 
@@ -121,6 +127,14 @@ function App() {
             />
           </Route>
         </Route>
+
+        {/* Admin Dashboard Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="ngo-register" element={<NgoRegister />} />
+        </Route>
+
+        <Route path="/ngo" element={<NgoDashboard />} />
 
       </Routes>
 
