@@ -15,9 +15,24 @@ const blogSchema = new mongoose.Schema(
       type: [String],
       required: [true, "At least one skill is required"],
     },
+    location: {
+      type: String,
+    },
     region: {
       type: String,
       default: "India",
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
+    likes: {
+      type: Number,
+      default: 0,
+    },
+    views: {
+      type: Number,
+      default: 0,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

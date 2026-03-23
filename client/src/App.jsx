@@ -16,6 +16,8 @@ import JobsAndInternships from "./pages/JobsAndInternships.jsx";
 import GovernmentSchemes from "./pages/GovernmentSchemes.jsx";
 import SkillProgress from "./pages/SkillProgress.jsx";
 import Feedback from "./pages/Feedback.jsx";
+import CommunityPage from "./pages/CommunityPage.jsx";
+import FeedPage from "./pages/FeedPage.jsx";
 import InterviewPage from "./pages/InterviewPage.jsx";
 import Chatbot from "./pages/Chatbot/Chatbot.jsx";
 import Navbar from "./components/Navbar.jsx";
@@ -35,6 +37,7 @@ import NewInterviewPage from "./new-mock/pages/NewInterviewPage";
 import InterviewsPage from "./new-mock/pages/InterviewsPage";
 import InterviewDetailPage from "./new-mock/pages/InterviewDetailPage";
 import FeedbackPage from "./new-mock/pages/FeedbackPage";
+import "./new-mock/index.css";
 
 // Admin Dashboard Imports
 import AdminLayout from "./admin/AdminLayout";
@@ -43,6 +46,8 @@ import NgoRegister from "./admin/pages/NgoRegister";
 import NgoDashboard from "./ngo/pages/NgoDashboard";
 
 import AdminLogin from "./pages/AdminLogin";
+
+import RecommendationPage from "./pages/RecommendationPage.jsx";
 
 function App() {
 
@@ -78,6 +83,7 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["user", "admin", "ngo"]} />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/recommendations" element={<RecommendationPage />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/ai-assistant" element={<AICareerAssistant />} />
             <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
@@ -90,13 +96,17 @@ function App() {
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/new_mock" element={<InterviewPage />} />
             <Route path="/chatbot" element={<Chatbot />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/feed" element={<FeedPage />} />
 
             <Route
               path="/interviews"
               element={
                 <MockAuthProvider>
                   <MockToastProvider>
-                    <InterviewsPage />
+                    <div className="mock-interview-theme relative w-full h-full min-h-screen">
+                      <InterviewsPage />
+                    </div>
                   </MockToastProvider>
                 </MockAuthProvider>
               }
@@ -106,7 +116,9 @@ function App() {
               element={
                 <MockAuthProvider>
                   <MockToastProvider>
-                    <NewInterviewPage />
+                    <div className="mock-interview-theme relative w-full h-full min-h-screen">
+                      <NewInterviewPage />
+                    </div>
                   </MockToastProvider>
                 </MockAuthProvider>
               }
@@ -116,7 +128,9 @@ function App() {
               element={
                 <MockAuthProvider>
                   <MockToastProvider>
-                    <InterviewDetailPage />
+                    <div className="mock-interview-theme relative w-full h-full min-h-screen">
+                      <InterviewDetailPage />
+                    </div>
                   </MockToastProvider>
                 </MockAuthProvider>
               }
@@ -126,7 +140,9 @@ function App() {
               element={
                 <MockAuthProvider>
                   <MockToastProvider>
-                    <FeedbackPage />
+                    <div className="mock-interview-theme relative w-full h-full min-h-screen">
+                      <FeedbackPage />
+                    </div>
                   </MockToastProvider>
                 </MockAuthProvider>
               }
