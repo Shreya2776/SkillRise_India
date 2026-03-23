@@ -13,19 +13,26 @@ export const protect = async (req, res, next) => {
     return res.status(401).json({ success: false, message: "Not authorized, no token" });
   }
 
+  if (!process.env.JWT_SECRET) {
+    console.error("FATAL ERROR: JWT_SECRET is not defined in environment variables");
+    return res.status(500).json({ success: false, message: "Server configuration error" });
+  }
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded Token ID:", decoded.id);
 
     req.user = await User.findById(decoded.id).select("-password");
     
     if (!req.user) {
+      console.log("User not found in DB with ID:", decoded.id);
       return res.status(401).json({ success: false, message: "User no longer exists" });
     }
     
     next();
   } catch (error) {
-    console.error("Auth Middleware Error:", error);
-    res.status(401).json({ success: false, message: "Not authorized, token failed" });
+    console.error("Auth Middleware Error:", error.message);
+    res.status(401).json({ success: false, message: `Not authorized, token failed: ${error.message}` });
   }
 };
 

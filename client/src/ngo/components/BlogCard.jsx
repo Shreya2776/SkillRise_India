@@ -1,49 +1,55 @@
 import React from "react";
-import { SKILL_LABELS } from "../utils/mockData";
-import { Trash2, Calendar, MapPin, Tag } from "lucide-react";
+import { Trash2, Edit, MapPin, Tag, Calendar } from "lucide-react";
 
-export default function BlogCard({ blog, onDelete }) {
+export default function BlogCard({ blog, onDelete, onEdit }) {
   return (
-    <div className="bg-white/5 border border-white/10 p-6 rounded-2xl shadow-sm hover:shadow-xl hover:border-blue-500/50 transition-all duration-300 group flex flex-col justify-between">
-      <div>
-        <div className="flex justify-between items-start">
-          <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
-            {blog.title}
-          </h3>
+    <div className="group bg-[#11111a] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.02] transition-all duration-300 shadow-lg shadow-black/20">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-xl font-bold text-white tracking-tight leading-tight group-hover:text-violet-400 transition-colors">
+          {blog.title}
+        </h3>
+        <div className="flex gap-2">
           <button
-            onClick={() => onDelete(blog.id)}
-            className="p-2 text-white/50 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-            title="Delete post"
+            onClick={() => onEdit(blog)}
+            className="p-2 rounded-xl bg-violet-500/10 text-violet-400 hover:bg-violet-500 hover:text-white transition-all border border-violet-500/20"
+            title="Edit Post"
           >
-            <Trash2 size={18} />
+            <Edit size={16} />
           </button>
-        </div>
-
-        <p className="text-white/60 mt-3 text-sm leading-relaxed mb-4">
-          {blog.description}
-        </p>
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {blog.skills.map((skill) => (
-            <span
-              key={skill}
-              className="px-2 py-1 text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md flex items-center gap-1"
-            >
-              <Tag size={12} />
-              {SKILL_LABELS[skill] || skill}
-            </span>
-          ))}
+          <button
+            onClick={() => onDelete(blog._id)}
+            className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+            title="Delete Post"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
+      <p className="text-white/50 text-sm leading-relaxed mb-6 line-clamp-3 font-medium">
+        {blog.description}
+      </p>
+
+      <div className="flex flex-wrap gap-2 mb-6">
+        {blog.skills.map((skill, idx) => (
+          <span
+            key={idx}
+            className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[10px] sm:text-xs font-bold text-white/30 uppercase tracking-widest flex items-center gap-1.5"
+          >
+            <Tag size={12} className="text-violet-500" />
+            {skill}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-white/20 pt-4 border-t border-white/[0.04]">
         <div className="flex items-center gap-2">
-          <Calendar size={14} />
-          <span>{blog.date}</span>
+          <MapPin size={14} className="text-cyan-500/50" />
+          {blog.region || "All India"}
         </div>
         <div className="flex items-center gap-2">
-          <MapPin size={14} />
-          <span>{blog.region}</span>
+          <Calendar size={14} />
+          {new Date(blog.createdAt).toLocaleDateString()}
         </div>
       </div>
     </div>
