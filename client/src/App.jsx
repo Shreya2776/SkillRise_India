@@ -47,22 +47,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route
-  path="/profile"
-  element={
-    <Layout>
-      <ProfileSetup />
-    </Layout>
-  }
-/>
-        <Route
-  path="/profile/dashboard"
-  element={
-    <Layout>
-      <ProfileDashboard />
-    </Layout>
-  }
-/>
+        {/* Removed duplicate /profile route that used the legacy Layout component */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
