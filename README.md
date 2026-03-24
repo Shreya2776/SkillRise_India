@@ -193,6 +193,12 @@ graph TD
     L <--> C
 ```
 
+### LangGraph Multi-Agent Orchestrator and Vector DB Flow
+
+<img src="screenshots/architecture.png" alt="Multi-Agent Architecture" width="100%"/>
+
+> *Diagram illustrating the LangGraph orchestrator routing queries to specialized agents, fetching context from MongoDB and Pinecone, and generating sub-100ms responses via Llama 3 on Groq.*
+
 ### Service Ports at a Glance
 
 | Service | Port | Description |
@@ -229,30 +235,7 @@ Every interaction refines the user's vector profile. The system learns your pref
 
 ### 2. Agentic Chatbot Architecture
 
-```
-User Message
-     │
-     ▼
-LangGraph Router
-     │
-     ├──► Career Advisor Agent   (roadmap queries)
-     ├──► Job Search Agent       (opportunity queries + Pinecone lookup)
-     ├──► Skill Coach Agent      (gap analysis + course suggestions)
-     └──► Interview Prep Agent   (question generation + feedback)
-               │
-               ▼
-       Hybrid Memory Layer
-       ┌──────────────────┐
-       │  MongoDB         │  ← Structured chat history, user profile
-       │  Pinecone        │  ← Semantic long-term memory
-       └──────────────────┘
-               │
-               ▼
-       Groq LLM (Llama 3) — Sub-100ms inference
-               │
-               ▼
-       Contextual, Personalized Response
-```
+<img src="screenshots/agentic_chatbot_architecture.png" alt="Agentic Chatbot Architecture Flowchart" width="100%"/>
 
 ### 3. Hybrid Memory & Semantic Search
 
