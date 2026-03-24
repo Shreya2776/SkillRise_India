@@ -7,21 +7,30 @@ import mongoose from "mongoose";
 import Profile from "../models/Profile.js";
 export const saveProfile = async (req, res) => {
   try {
-    const { role, data } = req.body;
+    const { role, data: profileData } = req.body;
+
+    const allowedRoles = ["student", "professional", "worker"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ msg: "Invalid role" });
+    }
+
+    if (Array.isArray(role)) {
+      return res.status(400).json({ msg: "Only one role allowed" });
+    }
 
     let profile = await Profile.findOne({ user: req.user });
 
     if (profile) {
       // 🔥 UPDATE
       profile.role = role;
-      profile.data = data;
+      profile.data = profileData;
       await profile.save();
     } else {
       // 🔥 CREATE
       profile = new Profile({
         user: req.user,
         role,
-        data,
+        data: profileData,
       });
       await profile.save();
     }
