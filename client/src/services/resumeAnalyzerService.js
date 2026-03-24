@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_ANALYZER_API_URL || "http://localhost:5001/api/analyzer"
+  baseURL: API_ENDPOINTS.ANALYZER
 });
 
 export const analyzeResume = async (file) => {

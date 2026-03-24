@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api/auth",
+  baseURL: API_ENDPOINTS.AUTH,
 });
 
 API.interceptors.request.use((config) => {

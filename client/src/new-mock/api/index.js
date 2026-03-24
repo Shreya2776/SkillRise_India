@@ -1,7 +1,11 @@
 import axios from "axios";
+import { API_ENDPOINTS } from "../../config/api";
+
+// We'll use a base URL for the mock API that includes /api
+const MOCK_API_BASE = API_ENDPOINTS.MOCK_AUTH.replace("/auth", "");
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_MOCK_API_URL || "http://localhost:5050/api",
+  baseURL: MOCK_API_BASE,
   headers: { "Content-Type": "application/json" },
 });
 

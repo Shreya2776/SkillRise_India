@@ -16,6 +16,8 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
    font:       Plus Jakarta Sans
 ──────────────────────────────────────────────────────────────────────────── */
 
+import { API_ENDPOINTS } from "../../config/api";
+
 const SUGGESTION_PROMPTS = [
   { icon: Code, title: "Learning Roadmap", text: "Generate a personalized web dev learning path for me." },
   { icon: Briefcase, title: "Skill Gap Analysis", text: "Find gaps between my skills and a Data Analyst role." },
@@ -432,7 +434,7 @@ const ChatUI = () => {
       if (selectedFile) formData.append("resume", selectedFile);
       removeFile();
 
-      const chatbotUrl = import.meta.env.VITE_CHATBOT_API_URL || "http://localhost:5002/api/chatbot/message";
+      const chatbotUrl = `${API_ENDPOINTS.CHATBOT}/message`;
       const response = await fetch(chatbotUrl, {
         method: "POST",
         body: formData,
@@ -512,7 +514,7 @@ const ChatUI = () => {
       if (threadId) formData.append("threadId", threadId);
       formData.append("userId", "local-test-user");
 
-      const chatbotUrl = import.meta.env.VITE_CHATBOT_API_URL || "http://localhost:5002/api/chatbot/message";
+      const chatbotUrl = `${API_ENDPOINTS.CHATBOT}/message`;
       const response = await fetch(chatbotUrl, {
         method: "POST",
         body: formData,
