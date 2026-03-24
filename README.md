@@ -235,7 +235,7 @@ Every interaction refines the user's vector profile. The system learns your pref
 
 ### 2. Agentic Chatbot Architecture
 
-<img src="screenshots/agentic_chatbot_architecture.png" alt="Agentic Chatbot Architecture Flowchart" width="100%"/>
+<img src="screenshots/architecture.png" alt="Agentic Chatbot Architecture Flowchart" width="100%"/>
 
 ### 3. Hybrid Memory & Semantic Search
 
