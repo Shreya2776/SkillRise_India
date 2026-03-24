@@ -1,7 +1,7 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
-import mammoth from "mammoth";
+const mammoth = require("mammoth");
 
 export async function parseResume(file) {
 
