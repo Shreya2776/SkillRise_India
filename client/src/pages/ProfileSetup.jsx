@@ -29,6 +29,13 @@ export default function ProfileSetup() {
   const handleChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
   };
+
+  const handleRoleChange = (newIndex) => {
+    if (index !== newIndex) {
+      setIndex(newIndex);
+      setFormData({}); // Purge cross-role data contamination instantly
+    }
+  };
  const fetchProfile = async () => {
   try {
     const token = localStorage.getItem("token");
@@ -55,7 +62,12 @@ export default function ProfileSetup() {
     const data = await res.json();
 
     if (data?.profile) {
-      setFormData(data?.profile?.data || {});
+      const DBrole = data.profile.role;
+      if (DBrole === "professional") setIndex(1);
+      else if (DBrole === "worker") setIndex(2);
+      else setIndex(0);
+
+      setFormData(data.profile.data || {});
       setIsEdit(false);
     } else {
       
@@ -119,8 +131,8 @@ const handleSubmit = async () => {
 };
 
   const handlers = useSwipeable({
-    onSwipedLeft: () => index < 2 && setIndex(index + 1),
-    onSwipedRight: () => index > 0 && setIndex(index - 1),
+    onSwipedLeft: () => index < 2 && handleRoleChange(index + 1),
+    onSwipedRight: () => index > 0 && handleRoleChange(index - 1),
     trackMouse: true,
   });
 
@@ -157,7 +169,7 @@ const handleSubmit = async () => {
               <div className="relative">
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 p-[2px]">
                   <div className="w-full h-full bg-[#12121a] rounded-full flex items-center justify-center text-3xl font-black tracking-tighter">
-                    {getInitials(formData.name)}
+                    {getInitials(formData.fullName)}
                   </div>
                 </div>
                 <div className="absolute -bottom-2 -right-2 bg-[#12121a] p-1.5 rounded-full border border-white/10">
@@ -167,7 +179,7 @@ const handleSubmit = async () => {
 
               {/* INFO */}
               <div className="flex-1">
-                <h1 className="text-3xl font-black tracking-tight mb-1">{formData.name || "Anonymous User"}</h1>
+                <h1 className="text-3xl font-black tracking-tight mb-1">{formData.fullName || "Anonymous User"}</h1>
                 <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
                   <span className="px-3 py-1 bg-violet-500/10 text-violet-400 rounded-full border border-violet-500/20 capitalize flex items-center gap-1.5">
                     <User size={14} /> {roleMap[userRole] || formData.role}
@@ -233,7 +245,7 @@ const handleSubmit = async () => {
                 </div>
               )}
 
-              {(userRole === "professional" || formData.company || formData.role) && (
+              {(userRole === "professional" || formData.company || formData.jobTitle) && (
                 <div className="bg-white/[0.02] border border-white/[0.08] rounded-[24px] p-6 hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400"><Briefcase size={20} /></div>
@@ -242,22 +254,22 @@ const handleSubmit = async () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-bold text-base text-white/90">{formData.role || "Role Not Specified"}</h4>
+                        <h4 className="font-bold text-base text-white/90">{formData.jobTitle || "Role Not Specified"}</h4>
                         <p className="text-sm text-white/50">{formData.company || "Company Not Specified"}</p>
                       </div>
-                      <span className="px-3 py-1 bg-white/5 rounded-lg text-xs font-bold text-white/60">{formData.exp ? `${formData.exp} Exp` : "Exp N/A"}</span>
+                      <span className="px-3 py-1 bg-white/5 rounded-lg text-xs font-bold text-white/60">{formData.yearsOfExperience ? `${formData.yearsOfExperience} yrs Exp` : (formData.experienceLevel || "Exp N/A")}</span>
                     </div>
-                    {formData.salary && (
+                    {formData.expectedSalary && (
                       <div className="mt-4 pt-4 border-t border-white/5">
-                        <p className="text-xs text-white/40 uppercase tracking-wider font-bold mb-1">Current Salary</p>
-                        <p className="text-sm font-medium text-white/80">{formData.salary}</p>
+                        <p className="text-xs text-white/40 uppercase tracking-wider font-bold mb-1">Expected Salary</p>
+                        <p className="text-sm font-medium text-white/80">{formData.expectedSalary}</p>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {(userRole === "worker" || formData.skill || formData.work) && (
+              {(userRole === "worker" || formData.primarySkill || formData.workType) && (
                 <div className="bg-white/[0.02] border border-white/[0.08] rounded-[24px] p-6 hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-orange-500/10 rounded-lg text-orange-400"><Wrench size={20} /></div>
@@ -266,20 +278,20 @@ const handleSubmit = async () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/5 p-4 rounded-xl">
                       <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-1">Primary Skill</p>
-                      <p className="font-semibold text-sm">{formData.skill || "Not Specified"}</p>
+                      <p className="font-semibold text-sm">{formData.primarySkill || "Not Specified"}</p>
                     </div>
                     <div className="bg-white/5 p-4 rounded-xl">
                       <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-1">Experience Level</p>
-                      <p className="font-semibold text-sm">{formData.exp || "Not Specified"}</p>
+                      <p className="font-semibold text-sm">{formData.experienceLevel || "Not Specified"}</p>
                     </div>
                     <div className="bg-white/5 p-4 rounded-xl">
                       <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-1">Work Type</p>
-                      <p className="font-semibold text-sm">{formData.work || "Not Specified"}</p>
+                      <p className="font-semibold text-sm">{formData.workType || "Not Specified"}</p>
                     </div>
-                    {formData.tools && (
+                    {formData.toolsOwned && (
                       <div className="bg-white/5 p-4 rounded-xl">
                         <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-1">Tools & Equip.</p>
-                        <p className="font-semibold text-sm">{formData.tools}</p>
+                        <p className="font-semibold text-sm">{formData.toolsOwned}</p>
                       </div>
                     )}
                   </div>
@@ -293,8 +305,8 @@ const handleSubmit = async () => {
                   <h3 className="text-lg font-bold">Key Skills</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {formData.skills ? (
-                    formData.skills.split(",").map((skill, idx) => (
+                  {formData.skills || formData.subSkills ? (
+                    (formData.skills || formData.subSkills).split(",").map((skill, idx) => (
                       <span key={idx} className="px-4 py-2 bg-[#1a1a2e] border border-white/10 rounded-full text-xs font-semibold text-white/80 hover:border-pink-500/50 hover:text-pink-400 transition-colors cursor-default shadow-sm">
                         {skill.trim()}
                       </span>
@@ -306,13 +318,13 @@ const handleSubmit = async () => {
               </div>
               
               {/* GOAL / TARGET */}
-              {formData.goal && (
+              {formData.careerGoal && (
                 <div className="bg-white/[0.02] border border-white/[0.08] rounded-[24px] p-6 hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400"><Target size={20} /></div>
                     <h3 className="text-lg font-bold">Career Objective</h3>
                   </div>
-                  <p className="text-white/70 text-sm leading-relaxed">{formData.goal}</p>
+                  <p className="text-white/70 text-sm leading-relaxed">{formData.careerGoal}</p>
                 </div>
               )}
             </div>
@@ -381,7 +393,7 @@ const handleSubmit = async () => {
           {["Student", "Professional", "Worker"].map((tab, i) => (
             <button
               key={i}
-              onClick={() => setIndex(i)}
+              onClick={() => handleRoleChange(i)}
               className={`flex-1 py-2 rounded-lg text-sm transition
                 ${index === i
                   ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white"
@@ -401,24 +413,27 @@ const handleSubmit = async () => {
 
           {/* STUDENT */}
           <FormWrapper title="Student Profile" onSubmit={handleSubmit}>
-            <Full><Input icon={<User />} value={formData.name} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
+            <Full><Input icon={<User />} value={formData.fullName} placeholder="Full Name" onChange={(e)=>handleChange("fullName",e.target.value)} /></Full>
 
-            <Input icon={<Phone />} value={formData.phone} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
-            <Input icon={<MapPin />} value={formData.location} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
+            <Input icon={<Phone />} value={formData.phone} placeholder="Phone Number" onChange={(e)=>handleChange("phone",e.target.value)} />
+            <Input icon={<MapPin />} value={formData.location} placeholder="City, State" onChange={(e)=>handleChange("location",e.target.value)} />
 
-            <Full><Input icon={<GraduationCap />} value={formData.college} placeholder="College" onChange={(e)=>handleChange("college",e.target.value)} /></Full>
+            <Full><Input icon={<GraduationCap />} value={formData.college} placeholder="College / University" onChange={(e)=>handleChange("college",e.target.value)} /></Full>
 
-            <Input icon={<BookOpen />} value={formData.degree} placeholder="Degree" onChange={(e)=>handleChange("degree",e.target.value)} />
+            <Input icon={<BookOpen />} value={formData.degree} placeholder="Degree Program" onChange={(e)=>handleChange("degree",e.target.value)} />
+            <Select value={formData.year} options={["Select Year","1st Year","2nd Year","3rd Year","4th Year", "Graduated"]} onChange={(v)=>handleChange("year",v)} />
 
-            <Select options={["Year","1st","2nd","3rd","4th"]} onChange={(v)=>handleChange("year",v)} />
+            <Full><Input icon={<Code />} value={formData.skills} placeholder="Skills (comma separated, e.g. Python, SQL)" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
+            <Full><Input icon={<Target />} value={formData.interests} placeholder="Core Interests (e.g. AI, Web Dev)" onChange={(e)=>handleChange("interests",e.target.value)} /></Full>
+            
+            <Select value={formData.preferredWorkType} options={["Preferred Work Type","Internship","Part-time","Full-time"]} onChange={(v)=>handleChange("preferredWorkType",v)} />
+            <Select value={formData.availability} options={["Availability","Immediate","After graduation"]} onChange={(v)=>handleChange("availability",v)} />
 
-            <Full><Input icon={<Target />} value={formData.interests} placeholder="Interests" onChange={(e)=>handleChange("interests",e.target.value)} /></Full>
-            <Full><Input icon={<Target />} value={formData.skills} placeholder="Skills (comma separated)" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
-            <Full><Input icon={<Target />} value={formData.goal} placeholder="Career Goal" onChange={(e)=>handleChange("goal",e.target.value)} /></Full>
+            <Full><Input icon={<Target />} value={formData.careerGoal} placeholder="Career Goal Objective" onChange={(e)=>handleChange("careerGoal",e.target.value)} /></Full>
+            <Full><Input icon={<Sparkles />} value={formData.languagesSpoken} placeholder="Languages Spoken (comma separated)" onChange={(e)=>handleChange("languagesSpoken",e.target.value)} /></Full>
 
             <Full>
               <label className="text-sm text-gray-400 mb-1">Upload Resume </label>
-              
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -426,7 +441,6 @@ const handleSubmit = async () => {
                 onChange={(e) => handleFileUpload(e)}
               />
             </Full>
-
           </FormWrapper>
 
           
@@ -434,27 +448,27 @@ const handleSubmit = async () => {
 
           {/* PROFESSIONAL */}
           <FormWrapper title="Professional Profile" onSubmit={handleSubmit}>
-            <Full><Input icon={<User />} value={formData.name} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
+            <Full><Input icon={<User />} value={formData.fullName} placeholder="Full Name" onChange={(e)=>handleChange("fullName",e.target.value)} /></Full>
 
-            <Input icon={<Phone />} value={formData.phone} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
-            <Input icon={<MapPin />} value={formData.location} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
+            <Input icon={<Phone />} value={formData.phone} placeholder="Phone Number" onChange={(e)=>handleChange("phone",e.target.value)} />
+            <Input icon={<MapPin />} value={formData.location} placeholder="Location (City, Country)" onChange={(e)=>handleChange("location",e.target.value)} />
 
-            <Full><Input icon={<BookOpen />} value={formData.lang} placeholder="Language" onChange={(e)=>handleChange("lang",e.target.value)} /></Full>
+            <Input icon={<Briefcase />} value={formData.jobTitle} placeholder="Current Job Title" onChange={(e)=>handleChange("jobTitle",e.target.value)} />
+            <Select value={formData.experienceLevel} options={["Experience Level","Junior","Mid-Level","Senior","Lead"]} onChange={(v)=>handleChange("experienceLevel",v)} />
 
-            <Input icon={<BookOpen />} value={formData.role} placeholder="Role" onChange={(e)=>handleChange("role",e.target.value)} />
-            <Input icon={<Target />} value={formData.exp} placeholder="Experience" onChange={(e)=>handleChange("exp",e.target.value)} />
+            <Input icon={<Target />} value={formData.yearsOfExperience} placeholder="Years of Experience (e.g. 5)" onChange={(e)=>handleChange("yearsOfExperience",e.target.value)} />
+            <Input icon={<BookOpen />} value={formData.company} placeholder="Current Company (Optional)" onChange={(e)=>handleChange("company",e.target.value)} />
 
-            <Full><Input icon={<BookOpen />} value={formData.company} placeholder="Company" onChange={(e)=>handleChange("company",e.target.value)} /></Full>
+            <Full><Input icon={<Code />} value={formData.skills} placeholder="Technical Skills (comma separated)" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
 
-            <Full><Input icon={<Target />} value={formData.skills} placeholder="Skills" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
+            <Input icon={<Target />} value={formData.expectedSalary} placeholder="Expected Salary (e.g. $80k)" onChange={(e)=>handleChange("expectedSalary",e.target.value)} />
+            <Select value={formData.preferredJobType} options={["Preferred Job Type","Remote","Hybrid","Onsite"]} onChange={(v)=>handleChange("preferredJobType",v)} />
 
-            <Input icon={<Target />} value={formData.salary} placeholder="Salary" onChange={(e)=>handleChange("salary",e.target.value)} />
-
-            <Select options={["Career Goal","Switch","Growth"]} onChange={(v)=>handleChange("goal",v)} />
+            <Full><Input icon={<Target />} value={formData.careerGoal} placeholder="Career Goal" onChange={(e)=>handleChange("careerGoal",e.target.value)} /></Full>
+            <Full><Input icon={<Sparkles />} value={formData.languagesSpoken} placeholder="Languages Spoken (comma separated)" onChange={(e)=>handleChange("languagesSpoken",e.target.value)} /></Full>
 
             <Full>
               <label className="text-sm text-gray-400 mb-1">Upload Resume (Optional)</label>
-              
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -462,30 +476,40 @@ const handleSubmit = async () => {
                 onChange={(e) => handleFileUpload(e)}
               />
             </Full>
-
           </FormWrapper>
 
           {/* WORKER */}
           <FormWrapper title="Worker Profile" onSubmit={handleSubmit}>
-            <Full><Input icon={<User />} value={formData.name} placeholder="Full Name" onChange={(e)=>handleChange("name",e.target.value)} /></Full>
+            <Full><Input icon={<User />} value={formData.fullName} placeholder="Full Name" onChange={(e)=>handleChange("fullName",e.target.value)} /></Full>
 
-            <Input icon={<Phone />} value={formData.phone} placeholder="Phone" onChange={(e)=>handleChange("phone",e.target.value)} />
+            <Input icon={<Phone />} value={formData.phone} placeholder="Phone Number" onChange={(e)=>handleChange("phone",e.target.value)} />
             <Input icon={<MapPin />} value={formData.location} placeholder="Location" onChange={(e)=>handleChange("location",e.target.value)} />
 
-            <Full><Input icon={<BookOpen />} value={formData.lang} placeholder="Language" onChange={(e)=>handleChange("lang",e.target.value)} /></Full>
+            <Input icon={<Wrench />} value={formData.primarySkill} placeholder="Primary Trade Skill (e.g. Electrician, Welder)" onChange={(e)=>handleChange("primarySkill",e.target.value)} />
+            <Select value={formData.experienceLevel} options={["Experience Level","Beginner","Intermediate","Expert"]} onChange={(v)=>handleChange("experienceLevel",v)} />
 
-            <Select value={formData.skill}  options={["Skill Type","Electrician","Driver","Plumber"]} onChange={(v)=>handleChange("skill",v)} />
-            <Select  value={formData.exp} options={["Experience","Beginner","Intermediate","Expert"]} onChange={(v)=>handleChange("exp",v)} />
+            <Full><Input icon={<Target />} value={formData.subSkills} placeholder="Sub-Skills (comma separated)" onChange={(e)=>handleChange("subSkills",e.target.value)} /></Full>
 
-            <Full><Input icon={<Target />} value={formData.skills} placeholder="Skills" onChange={(e)=>handleChange("skills",e.target.value)} /></Full>
+            <Input icon={<Target />} value={formData.yearsOfExperience} placeholder="Years of Experience" type="number" onChange={(e)=>handleChange("yearsOfExperience",e.target.value)} />
+            <Input icon={<Wrench />} value={formData.toolsOwned} placeholder="Tools / Equip. Owned" onChange={(e)=>handleChange("toolsOwned",e.target.value)} />
 
-            <Input icon={<BookOpen />} value={formData.tools} placeholder="Tools" onChange={(e)=>handleChange("tools",e.target.value)} />
+            <Select value={formData.workType} options={["Work Type","Daily","Contract","Full-time"]} onChange={(v)=>handleChange("workType",v)} />
+            <Input icon={<MapPin />} value={formData.workRadius} placeholder="Work Radius (km)" type="number" onChange={(e)=>handleChange("workRadius",e.target.value)} />
 
-            <Select value={formData.work} options={["Work Type","Daily","Contract","Full-time"]} onChange={(v)=>handleChange("work",v)} />
+            <Input icon={<Target />} value={formData.expectedWage} placeholder="Expected Wage" type="number" onChange={(e)=>handleChange("expectedWage",e.target.value)} />
+            <Select value={formData.availability} options={["Availability","Immediate","1 week","1 month"]} onChange={(v)=>handleChange("availability",v)} />
 
-            <Full><Input icon={<MapPin />} value={formData.radius} placeholder="Work Radius" onChange={(e)=>handleChange("radius",e.target.value)} /></Full>
+            <Full><Input icon={<Sparkles />} value={formData.languagesSpoken} placeholder="Languages Spoken" onChange={(e)=>handleChange("languagesSpoken",e.target.value)} /></Full>
+            <Full><Input icon={<CheckCircle />} value={formData.certifications} placeholder="Certifications / Licenses (Optional)" onChange={(e)=>handleChange("certifications",e.target.value)} /></Full>
 
-            <Full><input type="file" className="input" /></Full>
+            <Full>
+              <label className="text-sm text-gray-400 mb-1">Upload ID or Certificate (Optional)</label>
+              <input
+                type="file"
+                className="w-full p-3 rounded-xl bg-[#0f172a] border border-gray-700 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                onChange={(e) => handleFileUpload(e)}
+              />
+            </Full>
           </FormWrapper>
 
         </div>
