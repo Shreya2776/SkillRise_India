@@ -1,5 +1,7 @@
-import pdf from "pdf-parse/lib/pdf-parse.js";
-import mammoth from "mammoth";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdf = require("pdf-parse");
+const mammoth = require("mammoth");
 
 export async function parseResume(file) {
 
