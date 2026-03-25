@@ -18,10 +18,17 @@ import {
 } from "lucide-react";
 import { cn } from "../../services/utils";
 
-const user = JSON.parse(localStorage.getItem("user") || "{}");
-const username = user?.name || "User";
-
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
+  const getUsername = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      return user?.name || "User";
+    } catch {
+      return "User";
+    }
+  };
+
+  const username = getUsername();
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Sparkles, label: "AI Recommendations", path: "/recommendations" },
