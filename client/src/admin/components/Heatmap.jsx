@@ -258,10 +258,24 @@ const INDIA_TOPO_JSON =
   "https://raw.githubusercontent.com/Subhash9325/GeoJson-Data-of-Indian-States/master/Indian_States";
 
 export default function Heatmap({ stateData: propStateData = [] }) {
+  const [geoData, setGeoData] = useState([]);
   const [tooltip, setTooltip] = useState(null);
   const [selectedState, setSelectedState] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const geoLoggedRef = useRef(false);
+
+  useEffect(() => {
+    fetch(INDIA_TOPO_JSON)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.features) {
+          setGeoData(data.features);
+        } else {
+          setGeoData(data);
+        }
+      })
+      .catch(err => console.error("Error fetching geo map data:", err));
+  }, []);
 
   // Create flexible state data map
   const stateDataMap = {};
@@ -378,7 +392,7 @@ export default function Heatmap({ stateData: propStateData = [] }) {
             style={{ width: "100%", height: "100%" }}
           >
             <ZoomableGroup zoom={1} minZoom={0.8} maxZoom={4}>
-              <Geographies geography={INDIA_TOPO_JSON}>
+              <Geographies geography={geoData}>
                 {({ geographies }) => {
                   // Log GeoJSON properties once for debugging (using ref to avoid setState during render)
                   logGeoData(geographies);

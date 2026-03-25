@@ -1,4 +1,4 @@
-const baseApiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const baseApiUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/auth$/, "") : "http://localhost:8000";
 const mockApiUrl = import.meta.env.VITE_MOCK_API_URL || "http://localhost:5050";
 const analyzerApiUrl = import.meta.env.VITE_ANALYZER_API_URL || "http://localhost:5001";
 const chatbotApiUrl = import.meta.env.VITE_CHATBOT_API_URL || "http://localhost:5002";

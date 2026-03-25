@@ -7,16 +7,9 @@ import Profile from "./pages/ProfileSetup.jsx";
 
 import ResumeAnalyzer from "./pages/ResumeAnalyzer.jsx";
 import SkillGapAnalysis from "./pages/SkillGapAnalysis.jsx";
-import CareerExplorer from "./pages/CareerExplorer.jsx";
 
 import LearningRoadmap from "./pages/RoadmapPage.jsx";
-
-
-import JobsAndInternships from "./pages/JobsAndInternships.jsx";
-import GovernmentSchemes from "./pages/GovernmentSchemes.jsx";
-import SkillProgress from "./pages/SkillProgress.jsx";
 import Feedback from "./pages/Feedback.jsx";
-import CommunityPage from "./pages/CommunityPage.jsx";
 import FeedPage from "./pages/FeedPage.jsx";
 
 import Chatbot from "./pages/Chatbot/Chatbot.jsx";
@@ -88,15 +81,10 @@ function App() {
 
             <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
             <Route path="/skill-gap" element={<SkillGapAnalysis />} />
-            <Route path="/career-explorer" element={<CareerExplorer />} />
             <Route path="/learning-roadmap" element={<LearningRoadmap />} />
-            <Route path="/jobs" element={<JobsAndInternships />} />
-            <Route path="/schemes" element={<GovernmentSchemes />} />
-            <Route path="/progress" element={<SkillProgress />} />
             <Route path="/feedback" element={<Feedback />} />
 
             <Route path="/chatbot" element={<Chatbot />} />
-            <Route path="/community" element={<CommunityPage />} />
             <Route path="/feed" element={<FeedPage />} />
 
             <Route

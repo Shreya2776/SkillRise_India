@@ -303,11 +303,18 @@ const ChatUI = () => {
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
+  // Get current user dynamically to scope chats
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUserId = currentUser._id || "anonymous-user";
+
   // Load history on mount
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('skillrise_chat_history') || '[]');
+    const historyKey = `skillrise_chat_history_${currentUserId}`;
+    const activeKey = `skillrise_active_thread_${currentUserId}`;
+    
+    const saved = JSON.parse(localStorage.getItem(historyKey) || '[]');
     setChatHistory(saved);
-    const activeId = localStorage.getItem('skillrise_active_thread');
+    const activeId = localStorage.getItem(activeKey);
     if (activeId) {
       const activeChat = saved.find(c => c.id === activeId);
       if (activeChat) {
@@ -316,7 +323,7 @@ const ChatUI = () => {
         setLocalSessionId(activeChat.id);
       }
     }
-  }, []);
+  }, [currentUserId]);
 
   // Sync session ID
   useEffect(() => {
@@ -352,18 +359,20 @@ const ChatUI = () => {
       }
 
       newHistory = newHistory.slice(0, 5); // Keep last 5
-      localStorage.setItem('skillrise_chat_history', JSON.stringify(newHistory));
-      localStorage.setItem('skillrise_active_thread', chatObj.id);
+      const historyKey = `skillrise_chat_history_${currentUserId}`;
+      const activeKey = `skillrise_active_thread_${currentUserId}`;
+      localStorage.setItem(historyKey, JSON.stringify(newHistory));
+      localStorage.setItem(activeKey, chatObj.id);
       return newHistory;
     });
-  }, [messages, threadId, localSessionId]);
+  }, [messages, threadId, localSessionId, currentUserId]);
 
   const startNewChat = useCallback(() => {
     setMessages([]);
     setThreadId(null);
     setLocalSessionId(Date.now().toString());
-    localStorage.removeItem('skillrise_active_thread');
-  }, []);
+    localStorage.removeItem(`skillrise_active_thread_${currentUserId}`);
+  }, [currentUserId]);
 
   const loadChat = useCallback((chatId) => {
     const chat = chatHistory.find(c => c.id === chatId);
@@ -371,9 +380,9 @@ const ChatUI = () => {
       setMessages(chat.messages);
       setThreadId(chat.id.length === 24 ? chat.id : null);
       setLocalSessionId(chat.id);
-      localStorage.setItem('skillrise_active_thread', chat.id);
+      localStorage.setItem(`skillrise_active_thread_${currentUserId}`, chat.id);
     }
-  }, [chatHistory]);
+  }, [chatHistory, currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -430,7 +439,7 @@ const ChatUI = () => {
       const formData = new FormData();
       if (input.trim()) formData.append("message", input.trim());
       if (threadId) formData.append("threadId", threadId);
-      formData.append("userId", "local-test-user");
+      formData.append("userId", currentUserId);
       if (selectedFile) formData.append("resume", selectedFile);
       removeFile();
 
@@ -512,7 +521,7 @@ const ChatUI = () => {
       const formData = new FormData();
       formData.append("message", messageText.trim());
       if (threadId) formData.append("threadId", threadId);
-      formData.append("userId", "local-test-user");
+      formData.append("userId", currentUserId);
 
       const chatbotUrl = `${API_ENDPOINTS.CHATBOT}/message`;
       const response = await fetch(chatbotUrl, {

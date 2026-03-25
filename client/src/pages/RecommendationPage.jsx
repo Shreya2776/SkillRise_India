@@ -18,6 +18,7 @@ const RecommendationPage = () => {
         const params = {};
         if (analyzedSkills) {
           params.skills = JSON.parse(analyzedSkills).join(",");
+          localStorage.removeItem("analyzedSkills"); // Clear so it doesn't taint future direct visits
         }
 
         const res = await API.get("/recommendations", { params });
