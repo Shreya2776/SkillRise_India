@@ -2,11 +2,13 @@
  * Login Page — Dark futuristic design matching the landing page
  * Features: Email/password login, Google OAuth, forgot password link
  */
+import { API_ENDPOINTS } from "../config/api";
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
 import API from "../services/authService";
+
 import ParticleField from "../components/landing/ParticleField";
 
 export default function Login() {
@@ -187,7 +189,7 @@ export default function Login() {
 
           {/* Google OAuth */}
           <button
-            onClick={() => window.location.href = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/auth") + "/google"}
+            onClick={() => window.location.href = `${API_ENDPOINTS.AUTH}/google`}
             className="w-full flex items-center justify-center gap-3 py-4 bg-white/[0.04] border border-white/[0.08] rounded-2xl text-white/70 font-bold hover:bg-white/[0.08] hover:border-white/[0.12] hover:text-white transition-all"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
